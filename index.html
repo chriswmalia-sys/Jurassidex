@@ -1,0 +1,3453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JWE Codex">
+  <meta name="theme-color" content="#07111f">
+  <title>JWE Codex</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <style>
+    body { margin:0; padding:0; background:#07111f; }
+    .view { display:block; }
+    #app-error {
+      display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%);
+      background:#ff4d4d; color:white; padding:14px 20px; border-radius:12px;
+      font-family:'Segoe UI',Arial,sans-serif; font-size:14px; z-index:9999;
+      max-width:90vw; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,.4);
+    }
+    .page { padding-top: max(20px, env(safe-area-inset-top)) !important; }
+
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07111f;
+      --surface:   #0e1b2c;
+      --surface2:  #132235;
+      --border:    rgba(255,255,255,0.06);
+      --green:     #22e06f;
+      --muted:     #8aa0b8;
+      --text:      #e8f0f8;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; }
+
+    .header { padding: 28px 20px 0; max-width: 900px; margin: 0 auto; }
+    .logo-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .title { font-size: clamp(28px, 6vw, 42px); font-weight: 900; color: var(--green); letter-spacing: -1px; }
+    .version-badge {
+      background: var(--green); color: #07111f;
+      font-size: 11px; font-weight: 700; padding: 2px 8px;
+      border-radius: 20px; letter-spacing: 1px; text-transform: uppercase;
+    }
+    .subtitle { color: var(--muted); margin-top: 4px; font-size: 14px; }
+    .nav-strip { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+    .nav-btn {
+      display:inline-flex; align-items:center; gap:7px;
+      padding:9px 18px; border-radius:10px; font-size:13px; font-weight:700;
+      cursor:pointer; text-decoration:none; transition:all .15s; border:1px solid;
+    }
+    .nav-btn-enclosure {
+      background:rgba(245,197,24,.1); border-color:rgba(245,197,24,.3); color:#f5c518;
+    }
+    .nav-btn-enclosure:hover { background:rgba(245,197,24,.2); border-color:#f5c518; }
+
+    .controls { padding: 20px 20px 0; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+    .search-box {
+      width: 100%; padding: 13px 16px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); font-size: 15px; outline: none; transition: border-color .2s;
+    }
+    .search-box:focus { border-color: var(--green); }
+    .search-box::placeholder { color: var(--muted); }
+
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+    .filter-btn {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--muted); font-size: 13px; cursor: pointer; transition: all .15s;
+    }
+    .filter-btn:hover { border-color: var(--green); color: var(--text); }
+    .filter-btn.active { background: var(--green); color: #07111f; border-color: var(--green); font-weight: 700; }
+
+    .results-count { color: var(--muted); font-size: 13px; padding: 4px 0; }
+
+    .species-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px; padding: 16px 20px 40px; max-width: 900px; margin: 0 auto;
+    }
+
+    .card {
+      background: linear-gradient(160deg, var(--surface2), var(--surface));
+      border-radius: 16px; padding: 18px; border: 1px solid var(--border);
+      cursor: pointer; transition: transform .15s, border-color .15s, box-shadow .15s;
+      display: block; text-decoration: none;
+    }
+    .card:hover { transform: translateY(-3px); border-color: var(--green); box-shadow: 0 8px 30px rgba(34,224,111,.1); }
+    .card-name  { font-size: 20px; font-weight: 800; margin-bottom: 4px; color: var(--text); }
+    .card-era   { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--green); margin-bottom: 12px; }
+    .card-tags  { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .tag {
+      padding: 3px 10px; border-radius: 20px; font-size: 11px;
+      font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .tag-carnivore  { background: rgba(255,77,77,.15);   color: #ff7070; }
+    .tag-herbivore  { background: rgba(34,224,111,.15);  color: var(--green); }
+    .tag-piscivore  { background: rgba(77,184,255,.15);  color: #4db8ff; }
+    .tag-land       { background: rgba(180,120,60,.15);  color: #c89050; }
+    .tag-marine     { background: rgba(0,150,220,.15);   color: #40bcd8; }
+    .tag-flying     { background: rgba(170,110,255,.15); color: #bb88ff; }
+    .tag-hybrid     { background: rgba(255,200,0,.15);   color: #ffc800; }
+    .tag-dlc        { background: rgba(255,255,255,.08); color: var(--muted); }
+
+    .card-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { background: rgba(255,255,255,.04); border-radius: 10px; padding: 9px 10px; }
+    .stat-label { color: var(--muted); font-size: 11px; margin-bottom: 2px; }
+    .stat-value { font-size: 14px; font-weight: 700; }
+
+    .loading { text-align: center; color: var(--muted); padding: 60px 20px; font-size: 15px; }
+    .empty   { text-align: center; color: var(--muted); padding: 60px 20px; }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+    @media (max-width: 480px) { .species-grid { grid-template-columns: 1fr; } }
+  
+
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07111f;
+      --surface:   #0e1b2c;
+      --surface2:  #132235;
+      --border:    rgba(255,255,255,0.06);
+      --green:     #22e06f;
+      --muted:     #8aa0b8;
+      --text:      #e8f0f8;
+      --ideal:     #22e06f;
+      --compatible:#4db8ff;
+      --caution:   #f5c518;
+      --neutral:   #8aa0b8;
+      --hostile:   #ff4d4d;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; }
+    .page { max-width: 820px; margin: 0 auto; padding: 20px 20px 60px; }
+
+    /* ── Back button ── */
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--green); font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-bottom: 24px;
+      padding: 8px 14px; border-radius: 8px;
+      border: 1px solid rgba(34,224,111,.2);
+      background: rgba(34,224,111,.06);
+      transition: background .15s;
+    }
+    .back-btn:hover { background: rgba(34,224,111,.14); }
+
+    /* ── Profile header card ── */
+    .profile-header {
+      background: linear-gradient(135deg, #0d1e35, #091524);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px; margin-bottom: 20px;
+      position: relative; overflow: hidden;
+    }
+    .profile-header::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--green), #18a852);
+    }
+    .species-name { font-size: clamp(26px, 6vw, 40px); font-weight: 900; line-height: 1.1; }
+    .species-era  { color: var(--green); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin: 6px 0 16px; }
+    .species-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+
+    .tag {
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .tag-carnivore  { background: rgba(255,77,77,.15);   color: #ff7070; }
+    .tag-herbivore  { background: rgba(34,224,111,.15);  color: var(--green); }
+    .tag-piscivore  { background: rgba(77,184,255,.15);  color: #4db8ff; }
+    .tag-land       { background: rgba(180,120,60,.15);  color: #c89050; }
+    .tag-marine     { background: rgba(0,150,220,.15);   color: #40bcd8; }
+    .tag-flying     { background: rgba(170,110,255,.15); color: #bb88ff; }
+    .tag-hybrid     { background: rgba(255,200,0,.15);   color: #ffc800; }
+    .tag-dlc        { background: rgba(255,255,255,.08); color: var(--muted); }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .stat-block { background: rgba(255,255,255,.04); border-radius: 12px; padding: 12px 14px; }
+    .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .stat-value { font-size: 18px; font-weight: 800; }
+    .stat-value.highlight { color: var(--green); }
+
+    .habitat-section { margin-top: 20px; }
+    .section-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .habitat-bars { display: flex; flex-direction: column; gap: 7px; }
+    .hab-row { display: flex; align-items: center; gap: 10px; }
+    .hab-name { width: 72px; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+    .hab-bar-bg { flex: 1; height: 8px; background: rgba(255,255,255,.06); border-radius: 4px; overflow: hidden; }
+    .hab-bar-fill { height: 100%; border-radius: 4px; }
+    .hab-val { width: 36px; font-size: 12px; font-weight: 700; text-align: right; }
+    .bar-grass  { background: linear-gradient(90deg, #22e06f, #18a852); }
+    .bar-forest { background: linear-gradient(90deg, #4d9e30, #2d6e1a); }
+    .bar-water  { background: linear-gradient(90deg, #4db8ff, #1890d0); }
+    .bar-rock   { background: linear-gradient(90deg, #a08060, #706040); }
+    .bar-sand   { background: linear-gradient(90deg, #e0c070, #b09040); }
+
+    /* ── Dietary section ── */
+    .dietary-section {
+      background: linear-gradient(135deg, #0d1e35, #091524);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 24px; margin-bottom: 20px;
+      position: relative; overflow: hidden;
+    }
+    .dietary-section::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #f5c518, #e09010);
+    }
+    .section-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+    .section-subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+    /* Icon tile grid */
+    .diet-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+    }
+    .diet-tile {
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 12px;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 8px; text-align: center;
+      transition: border-color .15s, background .15s;
+    }
+    .diet-tile:hover { border-color: rgba(255,255,255,.15); background: rgba(255,255,255,.07); }
+    .diet-tile-icon {
+      font-size: 30px; line-height: 1;
+      /* fallback for systems without emoji colour */
+    }
+    .diet-tile-label {
+      font-size: 10px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+    }
+    .diet-tile-value {
+      font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.3;
+    }
+    /* Accent colours per tile type */
+    .tile-feeder    { border-color: rgba(245,197,24,.25); }
+    .tile-feeder .diet-tile-icon { filter: drop-shadow(0 0 6px rgba(245,197,24,.5)); }
+    .tile-food      { border-color: rgba(255,120,60,.25); }
+    .tile-food   .diet-tile-icon { filter: drop-shadow(0 0 6px rgba(255,120,60,.4)); }
+    .tile-secondary { border-color: rgba(138,160,184,.2); }
+    .tile-veg       { border-color: rgba(34,224,111,.25); }
+    .tile-veg    .diet-tile-icon { filter: drop-shadow(0 0 6px rgba(34,224,111,.4)); }
+    .tile-hunt      { border-color: rgba(255,77,77,.25); }
+    .tile-hunt   .diet-tile-icon { filter: drop-shadow(0 0 6px rgba(255,77,77,.4)); }
+    .tile-live      { border-color: rgba(77,184,255,.25); }
+    .tile-live   .diet-tile-icon { filter: drop-shadow(0 0 6px rgba(77,184,255,.4)); }
+    .tile-amount    { border-color: rgba(180,110,255,.25); }
+    .tile-amount .diet-tile-icon { filter: drop-shadow(0 0 6px rgba(180,110,255,.4)); }
+
+    /* Feed amount pill */
+    .amount-pill {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 700; margin-top: 2px;
+    }
+    .amount-low       { background: rgba(34,224,111,.15);  color: #22e06f; }
+    .amount-medium    { background: rgba(245,197,24,.15);  color: #f5c518; }
+    .amount-high      { background: rgba(255,120,60,.15);  color: #ff7840; }
+    .amount-very-high { background: rgba(255,60,60,.15);   color: #ff4d4d; }
+
+    /* Live feed badge */
+    .live-yes { color: #4db8ff; font-weight: 700; }
+    .live-no  { color: var(--muted); }
+
+    /* ── Description ── */
+    .description {
+      background: var(--surface2); border-radius: 14px;
+      padding: 16px 18px; color: var(--muted);
+      font-size: 14px; line-height: 1.6; margin-bottom: 20px;
+    }
+
+    /* ── Cohabitation section ── */
+    .coha-section {
+      background: linear-gradient(135deg, #0d1e35, #091524);
+      border: 1px solid var(--border); border-radius: 20px; padding: 24px;
+    }
+    .coha-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .coha-tab {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 20px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--muted); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+    }
+    .coha-tab:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
+    .tab-ideal      { background: rgba(34,224,111,.12);  border-color: var(--ideal);      color: var(--ideal);      }
+    .tab-compatible { background: rgba(77,184,255,.12);  border-color: var(--compatible); color: var(--compatible); }
+    .tab-caution    { background: rgba(245,197,24,.12);  border-color: var(--caution);    color: var(--caution);    }
+    .tab-neutral    { background: rgba(138,160,184,.12); border-color: var(--neutral);    color: var(--neutral);    }
+    .tab-hostile    { background: rgba(255,77,77,.12);   border-color: var(--hostile);    color: var(--hostile);    }
+
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+    .dot-ideal      { background: var(--ideal);      box-shadow: 0 0 6px var(--ideal); }
+    .dot-compatible { background: var(--compatible); box-shadow: 0 0 6px var(--compatible); }
+    .dot-caution    { background: var(--caution);    box-shadow: 0 0 6px var(--caution); }
+    .dot-neutral    { background: var(--neutral); }
+    .dot-hostile    { background: var(--hostile);    box-shadow: 0 0 6px var(--hostile); }
+    .badge { background: rgba(255,255,255,.12); border-radius: 20px; padding: 1px 7px; font-size: 11px; }
+
+    .coha-search {
+      width: 100%; padding: 10px 14px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); font-size: 14px; outline: none; margin-bottom: 16px;
+      transition: border-color .2s;
+    }
+    .coha-search:focus { border-color: var(--green); }
+    .coha-search::placeholder { color: var(--muted); }
+
+    .coha-list { display: flex; flex-direction: column; gap: 6px; }
+    .coha-item {
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(255,255,255,.03); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px; cursor: pointer; transition: all .15s;
+    }
+    .coha-item:hover { border-color: rgba(255,255,255,.15); background: rgba(255,255,255,.06); }
+    .coha-item-name { font-size: 14px; font-weight: 700; flex: 1; }
+    .coha-item-note { font-size: 12px; color: var(--muted); flex: 2; }
+    .empty-list { color: var(--muted); font-size: 13px; padding: 16px 0; text-align: center; }
+
+    .loading-msg { color: var(--muted); padding: 40px 20px; text-align: center; }
+    .error-msg   { color: var(--hostile); padding: 20px; }
+
+    @media (max-width: 520px) {
+      .stats-grid  { grid-template-columns: 1fr 1fr; }
+      .diet-grid   { grid-template-columns: 1fr 1fr; }
+      .coha-item-note { display: none; }
+    }
+  
+
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07111f;
+      --surface:   #0e1b2c;
+      --surface2:  #132235;
+      --surface3:  #1a2d45;
+      --border:    rgba(255,255,255,0.06);
+      --green:     #22e06f;
+      --muted:     #8aa0b8;
+      --text:      #e8f0f8;
+      --rag-green: #22e06f;
+      --rag-amber: #f5c518;
+      --rag-red:   #ff4d4d;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; }
+    .page { max-width: 960px; margin: 0 auto; padding: 20px 20px 80px; }
+
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--green); font-size: 14px; font-weight: 600; cursor: pointer;
+      margin-bottom: 24px; padding: 8px 14px; border-radius: 8px;
+      border: 1px solid rgba(34,224,111,.2); background: rgba(34,224,111,.06);
+      transition: background .15s;
+    }
+    .back-btn:hover { background: rgba(34,224,111,.14); }
+
+    .page-header { margin-bottom: 28px; }
+    .page-title  { font-size: clamp(24px,5vw,36px); font-weight: 900; }
+    .page-sub    { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+    /* ── Step indicator ── */
+    .steps {
+      display: flex; align-items: center; gap: 0;
+      margin-bottom: 28px; background: var(--surface2);
+      border-radius: 14px; padding: 4px; border: 1px solid var(--border);
+    }
+    .step {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 10px 14px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; color: var(--muted);
+      transition: all .2s; cursor: default;
+    }
+    .step.active   { background: var(--surface3); color: var(--text); }
+    .step.complete { color: var(--green); }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%; border: 2px solid currentColor;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; flex-shrink: 0;
+    }
+    .step.complete .step-num { background: var(--green); border-color: var(--green); color: #07111f; }
+    .step-divider { width: 20px; text-align: center; color: var(--border); font-size: 18px; flex-shrink: 0; }
+
+    /* ── Enclosure type selector ── */
+    .type-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+      max-width: 700px; margin: 0 auto 12px;
+    }
+    @media (max-width: 560px) { .type-grid { grid-template-columns: 1fr; } }
+
+    .type-card {
+      background: linear-gradient(135deg, #0d1e35, #091524);
+      border: 2px solid var(--border); border-radius: 20px;
+      padding: 28px 20px; text-align: center; cursor: pointer;
+      transition: all .2s; position: relative; overflow: hidden;
+    }
+    .type-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,.2); }
+    .type-card.selected-land    { border-color: #c89050; box-shadow: 0 0 24px rgba(200,144,80,.2); }
+    .type-card.selected-aviary  { border-color: #bb88ff; box-shadow: 0 0 24px rgba(187,136,255,.2); }
+    .type-card.selected-marine  { border-color: #4db8ff; box-shadow: 0 0 24px rgba(77,184,255,.2); }
+    .type-card-icon   { font-size: 48px; margin-bottom: 14px; line-height: 1; }
+    .type-card-name   { font-size: 18px; font-weight: 900; margin-bottom: 6px; }
+    .type-card-desc   { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .type-card-species{ font-size: 11px; margin-top: 10px; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px; display: inline-block; }
+    .badge-land   { background: rgba(200,144,80,.15); color: #c89050; }
+    .badge-aviary { background: rgba(187,136,255,.15); color: #bb88ff; }
+    .badge-marine { background: rgba(77,184,255,.15);  color: #4db8ff; }
+    .type-card-check {
+      position: absolute; top: 12px; right: 12px; font-size: 20px;
+      opacity: 0; transition: opacity .2s;
+    }
+    .type-card.selected-land .type-card-check,
+    .type-card.selected-aviary .type-card-check,
+    .type-card.selected-marine .type-card-check { opacity: 1; }
+
+    /* Change button */
+    .change-type-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted); cursor: pointer;
+      padding: 5px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: none; margin-bottom: 20px; transition: all .15s;
+    }
+    .change-type-btn:hover { color: var(--text); border-color: rgba(255,255,255,.2); }
+
+    /* Active enclosure type banner */
+    .type-banner {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-radius: 12px; margin-bottom: 20px;
+      border: 1px solid transparent; font-size: 14px; font-weight: 700;
+    }
+    .banner-land   { background: rgba(200,144,80,.1);  border-color: rgba(200,144,80,.3);  color: #c89050; }
+    .banner-aviary { background: rgba(187,136,255,.1); border-color: rgba(187,136,255,.3); color: #bb88ff; }
+    .banner-marine { background: rgba(77,184,255,.1);  border-color: rgba(77,184,255,.3);  color: #4db8ff; }
+    .banner-icon { font-size: 24px; }
+    .banner-info { flex: 1; }
+    .banner-name { font-size: 15px; font-weight: 900; }
+    .banner-hint { font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 2px; }
+
+    /* ── Two-column layout ── */
+    .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 780px) { .layout { grid-template-columns: 1fr; } }
+
+    /* ── Panel card ── */
+    .panel {
+      background: linear-gradient(135deg, #0d1e35, #091524);
+      border: 1px solid var(--border); border-radius: 20px; padding: 22px;
+      position: relative; overflow: hidden; margin-bottom: 16px;
+    }
+    .panel:last-child { margin-bottom: 0; }
+    .panel-accent-green::before  { content:''; position:absolute; top:0;left:0;right:0;height:3px; background:linear-gradient(90deg,var(--green),#18a852); }
+    .panel-accent-blue::before   { content:''; position:absolute; top:0;left:0;right:0;height:3px; background:linear-gradient(90deg,#4db8ff,#1870c0); }
+    .panel-accent-amber::before  { content:''; position:absolute; top:0;left:0;right:0;height:3px; background:linear-gradient(90deg,#f5c518,#c08800); }
+    .panel-accent-purple::before { content:''; position:absolute; top:0;left:0;right:0;height:3px; background:linear-gradient(90deg,#bb88ff,#8844cc); }
+    .panel-accent-land::before   { content:''; position:absolute; top:0;left:0;right:0;height:3px; background:linear-gradient(90deg,#c89050,#906030); }
+    .panel-accent-aviary::before { content:''; position:absolute; top:0;left:0;right:0;height:3px; background:linear-gradient(90deg,#bb88ff,#8844cc); }
+    .panel-accent-marine::before { content:''; position:absolute; top:0;left:0;right:0;height:3px; background:linear-gradient(90deg,#4db8ff,#1870c0); }
+
+    .panel-title { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+    .panel-sub   { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+
+    /* ── Species select dropdown ── */
+    .species-select-row {
+      display: flex; gap: 8px; align-items: stretch; margin-bottom: 14px;
+    }
+    .species-select {
+      flex: 1; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); font-size: 13px; outline: none; cursor: pointer;
+      transition: border-color .2s; appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238aa0b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center;
+      padding-right: 32px;
+    }
+    .species-select:focus { border-color: var(--green); }
+    .species-select:disabled { opacity: .4; cursor: not-allowed; }
+    .species-select option { background: #132235; color: var(--text); }
+
+    .add-species-btn {
+      padding: 10px 16px; border-radius: 10px; border: none;
+      background: var(--green); color: #07111f; font-size: 13px; font-weight: 800;
+      cursor: pointer; flex-shrink: 0; transition: background .15s; white-space: nowrap;
+    }
+    .add-species-btn:hover { background: #18c05a; }
+    .add-species-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Roster ── */
+    .roster { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+    .roster-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 16px 0; }
+    .roster-item {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 10px;
+      transition: border-color .15s;
+    }
+    .roster-item.herd-warn { border-color: rgba(245,197,24,.4); }
+    .roster-item.herd-error { border-color: rgba(255,77,77,.4); }
+    .ri-icon { font-size: 18px; flex-shrink: 0; }
+    .ri-info { flex: 1; min-width: 0; }
+    .ri-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ri-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .ri-herd-status {
+      font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .herd-ok    { background: rgba(34,224,111,.15); color: var(--green); }
+    .herd-low   { background: rgba(245,197,24,.15); color: var(--rag-amber); }
+    .herd-high  { background: rgba(245,197,24,.15); color: var(--rag-amber); }
+    .herd-over  { background: rgba(255,77,77,.15);  color: var(--rag-red); }
+
+    /* Quantity stepper */
+    .ri-qty {
+      display: flex; align-items: center; gap: 2px; flex-shrink: 0;
+    }
+    .qty-btn {
+      width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface3); color: var(--text); font-size: 14px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      line-height: 1; transition: background .1s, border-color .1s; flex-shrink: 0;
+    }
+    .qty-btn:hover { background: var(--surface2); border-color: rgba(255,255,255,.2); }
+    .qty-num {
+      min-width: 26px; text-align: center; font-size: 13px; font-weight: 800;
+      color: var(--text);
+    }
+    .ri-remove {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 16px; padding: 2px 4px; border-radius: 6px; line-height: 1;
+      transition: color .15s, background .15s; flex-shrink: 0;
+    }
+    .ri-remove:hover { color: var(--rag-red); background: rgba(255,77,77,.1); }
+
+    /* ── Sliders ── */
+    .slider-group { margin-bottom: 14px; }
+    .slider-row   { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .slider-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; flex: 1; }
+    .slider-value { font-size: 13px; font-weight: 700; min-width: 72px; text-align: right; }
+    input[type=range] {
+      width: 100%; height: 6px; border-radius: 3px; outline: none; cursor: pointer;
+      -webkit-appearance: none; appearance: none; background: var(--surface3);
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+      background: var(--green); cursor: pointer; border: 2px solid #07111f;
+      box-shadow: 0 0 6px rgba(34,224,111,.5);
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--green); cursor: pointer; border: 2px solid #07111f;
+    }
+    .hab-total      { font-size: 12px; text-align: right; margin-top: 4px; }
+    .hab-total.ok   { color: var(--green); }
+    .hab-total.warn { color: var(--rag-amber); }
+
+    /* ── Feeders (static auto-display) ── */
+    .feeder-row {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .feeder-tile {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      border-radius: 12px; padding: 8px 14px;
+    }
+    .feeder-tile-icon { font-size: 20px; line-height: 1; flex-shrink: 0; }
+    .feeder-tile-info { display: flex; flex-direction: column; gap: 2px; }
+    .feeder-tile-name { font-size: 13px; font-weight: 700; }
+    .feeder-tile-count{ font-size: 11px; color: var(--muted); }
+
+    /* ── RAG ── */
+    .rag-display {
+      border-radius: 14px; padding: 20px; text-align: center;
+      border: 2px solid transparent; transition: all .3s; margin-bottom: 14px;
+    }
+    .rag-green { background: rgba(34,224,111,.08);  border-color: var(--rag-green); }
+    .rag-amber { background: rgba(245,197,24,.08);  border-color: var(--rag-amber); }
+    .rag-red   { background: rgba(255,77,77,.08);   border-color: var(--rag-red);   }
+    .rag-empty { background: rgba(255,255,255,.03); border-color: var(--border);    }
+    .rag-icon   { font-size: 40px; margin-bottom: 8px; line-height: 1; }
+    .rag-status { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+    .rag-green .rag-status { color: var(--rag-green); }
+    .rag-amber .rag-status { color: var(--rag-amber); }
+    .rag-red   .rag-status { color: var(--rag-red);   }
+    .rag-desc   { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .score-bar-wrap { margin: 10px 0; }
+    .score-bar-bg   { height: 8px; background: var(--surface3); border-radius: 4px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 4px; transition: width .4s, background .4s; }
+    .score-label    { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Issues ── */
+    .issues-list { display: flex; flex-direction: column; gap: 8px; }
+    .issue-item  {
+      border-radius: 10px; padding: 11px 14px;
+      border-left: 3px solid transparent; display: flex; gap: 10px; align-items: flex-start;
+    }
+    .issue-red   { background: rgba(255,77,77,.07);  border-color: var(--rag-red);   }
+    .issue-amber { background: rgba(245,197,24,.07); border-color: var(--rag-amber); }
+    .issue-green { background: rgba(34,224,111,.07); border-color: var(--rag-green); }
+    .issue-icon  { flex-shrink: 0; font-size: 16px; margin-top: 1px; }
+    .issue-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+    .issue-detail{ font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* ── Gene mods ── */
+    .gene-item {
+      background: rgba(187,136,255,.06); border: 1px solid rgba(187,136,255,.2);
+      border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+    }
+    .gene-item:last-child { margin-bottom: 0; }
+    .gene-header  { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .gene-icon    { font-size: 20px; }
+    .gene-title   { font-size: 13px; font-weight: 800; color: #cc99ff; flex: 1; }
+    .gene-species { font-size: 11px; color: var(--muted); }
+    .gene-desc    { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .gene-effect  {
+      display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 700;
+      background: rgba(187,136,255,.15); color: #bb88ff; padding: 2px 10px; border-radius: 20px;
+    }
+
+    .empty-state { text-align: center; padding: 28px 20px; color: var(--muted); }
+    .empty-icon  { font-size: 44px; margin-bottom: 10px; }
+    .empty-text  { font-size: 13px; }
+
+    /* ── Dietary food icon tiles ── */
+    .food-grid {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .food-tile {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 14px; min-width: 0;
+      transition: border-color .15s;
+    }
+    .food-tile:hover { border-color: rgba(255,255,255,.14); }
+    .food-tile-icon { font-size: 24px; line-height: 1; flex-shrink: 0; }
+    .food-tile-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .food-tile-name {
+      font-size: 12px; font-weight: 700; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .food-tile-amount {
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+      display: inline-block; width: fit-content;
+    }
+    .amount-low       { background: rgba(34,224,111,.15);  color: #22e06f; }
+    .amount-medium    { background: rgba(245,197,24,.15);  color: #f5c518; }
+    .amount-high      { background: rgba(255,120,60,.15);  color: #ff7840; }
+    .amount-very-high { background: rgba(255,60,60,.15);   color: #ff4d4d; }
+    .dietary-empty {
+      color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0;
+    }
+
+    /* hide the whole calculator until type is chosen */
+    .calculator-section { display: none; }
+    .calculator-section.visible { display: block; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+  
+  </style>
+</head>
+<body>
+
+<div id="app-error"></div>
+
+<div id="view-index" class="view">
+<div class="header">
+    <div class="logo-row">
+      <div class="title">JWE Codex</div>
+      <span class="version-badge">JWE3</span>
+    </div>
+    <div class="subtitle">Jurassic World Evolution &#8212; Species Database &amp; Cohabitation Planner</div>
+    <div class="nav-strip">
+      <div class="nav-btn nav-btn-enclosure" onclick="goToEnclosure()">&#x1F3DF;&#xFE0F; Enclosure Planner</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <input type="text" class="search-box" id="searchBox" placeholder="Search species by name&#8230;" autocomplete="off">
+    <div class="filters" id="filterRow">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="diet:Carnivore">Carnivore</button>
+      <button class="filter-btn" data-filter="diet:Herbivore">Herbivore</button>
+      <button class="filter-btn" data-filter="diet:Piscivore">Piscivore</button>
+      <button class="filter-btn" data-filter="type:Land">Land</button>
+      <button class="filter-btn" data-filter="type:Marine">Marine</button>
+      <button class="filter-btn" data-filter="type:Flying">Flying</button>
+    </div>
+    <div class="results-count" id="resultsCount"></div>
+  </div>
+
+  <div id="loadingMsg" class="loading">Loading species database&#8230;</div>
+  <div class="species-grid" id="speciesContainer"></div>
+
+  <script>
+    var allSpecies   = [];
+    var activeFilter = "all";
+    var searchTerm   = "";
+    var scriptUrl    = "";   // populated by getScriptUrl() call below
+
+    // ── 1. Get the canonical deployed URL first, then load species ──
+    google.script.run
+      .withSuccessHandler(function(url) {
+        scriptUrl = url;
+        google.script.run
+          .withSuccessHandler(function(species) {
+            document.getElementById("loadingMsg").style.display = "none";
+            allSpecies = species;
+            render();
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById("loadingMsg").textContent = "Failed to load: " + (err.message || err);
+          })
+          .getSpecies();
+      })
+      .withFailureHandler(function(err) {
+        // Fallback: try to use current URL if getScriptUrl fails
+        scriptUrl = window.location.href.split("?")[0];
+        google.script.run
+          .withSuccessHandler(function(species) {
+            document.getElementById("loadingMsg").style.display = "none";
+            allSpecies = species;
+            render();
+          })
+          .getSpecies();
+      })
+      .getScriptUrl();
+
+    // ── 2. Render the card grid ──
+    function render() {
+      var list = allSpecies.slice();
+
+      if (activeFilter !== "all") {
+        var parts = activeFilter.split(":");
+        var key   = parts[0];
+        var val   = parts[1];
+        list = list.filter(function(s) {
+          if (key === "diet") return s.Diet === val;
+          if (key === "type") return s.Type === val || (val === "Land" && (s.Hybrid === true || s.Hybrid === "TRUE"));
+          return true;
+        });
+      }
+
+      if (searchTerm) {
+        list = list.filter(function(s) {
+          return s.Name.toLowerCase().indexOf(searchTerm) !== -1;
+        });
+      }
+
+      document.getElementById("resultsCount").textContent =
+        list.length + " species" + (list.length !== allSpecies.length ? " (filtered)" : "");
+
+      var container = document.getElementById("speciesContainer");
+      container.innerHTML = "";
+
+      if (list.length === 0) {
+        var empty = document.createElement("div");
+        empty.className = "empty";
+        empty.innerHTML = '<div class="empty-icon">&#x1F995;</div><div>No species found</div>';
+        container.appendChild(empty);
+        return;
+      }
+
+      list.forEach(function(s) {
+        container.appendChild(buildCard(s));
+      });
+    }
+
+    function buildCard(s) {
+      var isBase    = (s.DLC === "Base Game");
+      var dietClass = "tag tag-" + (s.Diet || "").toLowerCase();
+      var typeClass = "tag tag-" + (s.Type || "").toLowerCase();
+      var isHybrid  = (s.Hybrid === true || s.Hybrid === "TRUE");
+
+      var card = document.createElement("div");
+      card.className = "card";
+      card.addEventListener("click", function() { goToSpecies(s.ID); });
+
+      var name = document.createElement("div");
+      name.className   = "card-name";
+      name.textContent = s.Name;
+      card.appendChild(name);
+
+      var era = document.createElement("div");
+      era.className   = "card-era";
+      era.textContent = s.Era;
+      card.appendChild(era);
+
+      var tagsRow = document.createElement("div");
+      tagsRow.className = "card-tags";
+      tagsRow.appendChild(mkTag(dietClass, s.Diet));
+      tagsRow.appendChild(mkTag(typeClass, s.Type));
+      if (isHybrid) tagsRow.appendChild(mkTag("tag tag-hybrid", "Hybrid"));
+      if (!isBase) tagsRow.appendChild(mkTag("tag tag-dlc", s.DLC));
+      card.appendChild(tagsRow);
+
+      var statsGrid = document.createElement("div");
+      statsGrid.className = "card-stats";
+      var statDefs = [
+        ["Space Req.",    fmtNum(s.Space) + " m\u00b2"],
+        ["Herd Size",     fmtInt(s["Min_Social"]) + "\u2013" + fmtInt(s["Max_Social"])],
+        ["Dominance",     fmtNum(s.Dominance)],
+        ["Comfort Thr.",  fmtNum(s["Comfort_Threshold"]) + "%"]
+      ];
+      statDefs.forEach(function(d) {
+        var stat  = document.createElement("div");
+        stat.className = "stat";
+        var lbl   = document.createElement("div");
+        lbl.className   = "stat-label";
+        lbl.textContent = d[0];
+        var val   = document.createElement("div");
+        val.className   = "stat-value";
+        val.textContent = d[1];
+        stat.appendChild(lbl);
+        stat.appendChild(val);
+        statsGrid.appendChild(stat);
+      });
+      card.appendChild(statsGrid);
+
+      return card;
+    }
+
+    function mkTag(cls, text) {
+      var span = document.createElement("span");
+      span.className   = cls;
+      span.textContent = text || "";
+      return span;
+    }
+    function fmtNum(v) { return (v === undefined || v === "") ? "\u2014" : Number(v).toLocaleString(); }
+    function fmtInt(v) { return (v === undefined || v === "") ? "\u2014" : String(Math.round(Number(v))); }
+
+    // ── 3. Navigation — uses the real script URL, not window.location ──
+    function goToEnclosure() {
+      window.top.location.href = scriptUrl + "?page=enclosure";
+    }
+    function goToSpecies(id) {
+      var url = scriptUrl + "?id=" + encodeURIComponent(id);
+      window.top.location.href = url;
+    }
+
+    // ── 4. Search + filter listeners ──
+    document.getElementById("searchBox").addEventListener("input", function(e) {
+      searchTerm = e.target.value.toLowerCase().trim();
+      render();
+    });
+
+    document.getElementById("filterRow").addEventListener("click", function(e) {
+      var btn = e.target.closest(".filter-btn");
+      if (!btn) return;
+      document.querySelectorAll(".filter-btn").forEach(function(b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      activeFilter = btn.dataset.filter;
+      render();
+    });
+  </script>
+</div>
+
+<div id="view-species" class="view" style="display:none">
+<div class="page">
+  <div class="back-btn" onclick="goBack()">&#8592; Back to Index</div>
+  <div id="profileContainer"><div class="loading-msg">Loading species data&#8230;</div></div>
+</div>
+
+<script>
+  var speciesId  = "<?= speciesId ?>";
+  var scriptUrl  = "";
+  var cohaData   = null;
+  var activeTab  = "ideal";
+  var cohaSearch = "";
+
+  var TABS = ["ideal", "compatible", "caution", "neutral", "hostile"];
+  var TAB_LABELS = { ideal:"Ideal", compatible:"Compatible", caution:"Caution", neutral:"Neutral", hostile:"Hostile" };
+
+  // ── Icon maps — no backticks used anywhere ────────────────────────────
+  var FEEDER_ICONS = {
+    "Meat Feeder":   "\uD83E\uDDB4",   // 🦴
+    "Ground Feeder": "\uD83C\uDF3F",   // 🌿
+    "Tall Feeder":   "\uD83C\uDF32",   // 🌲
+    "Marine Feeder": "\uD83D\uDC1F",   // 🐟
+    "Gyrosphere Bait": "\uD83C\uDFAF"  // 🎯
+  };
+  var HUNT_ICONS = {
+    "Active Hunter": "\uD83D\uDC08",   // 🐈 → use tiger-ish predator
+    "Ambush":        "\uD83D\uDC09",   // 🐉
+    "Scavenger":     "\uD83E\uDD85",   // 🦅
+    "Grazer":        "\uD83D\uDC04",   // 🐄
+    "Filter Feeder": "\uD83D\uDC0B"    // 🐋
+  };
+  var AMOUNT_ICONS = {
+    "Low":       "\u25A1\u25A1\u25A1\u25A1",  // □□□□
+    "Medium":    "\u25A0\u25A0\u25A1\u25A1",  // ■■□□
+    "High":      "\u25A0\u25A0\u25A0\u25A1",  // ■■■□
+    "Very High": "\u25A0\u25A0\u25A0\u25A0"   // ■■■■
+  };
+  var AMOUNT_CLASSES = {
+    "Low": "amount-low", "Medium": "amount-medium",
+    "High": "amount-high", "Very High": "amount-very-high"
+  };
+
+  // ── 1. Boot sequence: URL → species ──────────────────────
+  google.script.run
+    .withSuccessHandler(function(url) {
+      scriptUrl = url;
+      google.script.run
+        .withSuccessHandler(onSpeciesLoaded)
+        .withFailureHandler(onError)
+        .getSpeciesById(speciesId);
+    })
+    .withFailureHandler(function() {
+      scriptUrl = window.location.href.split("?")[0];
+      google.script.run
+        .withSuccessHandler(onSpeciesLoaded)
+        .withFailureHandler(onError)
+        .getSpeciesById(speciesId);
+    })
+    .getScriptUrl();
+
+  function onSpeciesLoaded(s) {
+    if (!s) {
+      document.getElementById("profileContainer").innerHTML =
+        '<div class="error-msg">Species "' + speciesId + '" not found.</div>';
+      return;
+    }
+    document.title = "JWE Codex \u2014 " + s.Name;
+    buildProfileDOM(s);
+    google.script.run
+      .withSuccessHandler(onCohaLoaded)
+      .withFailureHandler(function() {
+        document.getElementById("cohaContainer").innerHTML =
+          '<div class="error-msg">Could not load compatibility data.</div>';
+      })
+      .getCompatibilityForSpecies(speciesId);
+  }
+
+  function onError(err) {
+    document.getElementById("profileContainer").innerHTML =
+      '<div class="error-msg">Error: ' + (err.message || err) + '</div>';
+  }
+
+  function onCohaLoaded(groups) { cohaData = groups; renderCoha(); }
+
+  // ── 2. Build full profile DOM ────────────────────────────
+  function buildProfileDOM(s) {
+    var container = document.getElementById("profileContainer");
+    container.innerHTML = "";
+
+    var isBase    = (s.DLC === "Base Game");
+    var dietClass = "tag-" + (s.Diet  || "unknown").toLowerCase();
+    var typeClass = "tag-" + (s.Type  || "unknown").toLowerCase();
+    var isHybrid  = (s.Hybrid === true || s.Hybrid === "TRUE");
+
+    // ── A. Profile header ──
+    var header = el("div", "profile-header");
+    header.appendChild(txt("div", "species-name", s.Name));
+    header.appendChild(txt("div", "species-era",  s.Era));
+
+    var tags = el("div", "species-tags");
+    tags.appendChild(txt("span", "tag " + dietClass, s.Diet));
+    tags.appendChild(txt("span", "tag " + typeClass, s.Type));
+    if (isHybrid) tags.appendChild(txt("span", "tag tag-hybrid", "Hybrid"));
+    if (!isBase) tags.appendChild(txt("span", "tag tag-dlc", s.DLC));
+    header.appendChild(tags);
+
+    var statsGrid = el("div", "stats-grid");
+    var statDefs = [
+      ["Space Required", fmtNum(s.Space) + " m\u00b2", true],
+      ["Herd Size", fmtInt(s["Min_Social"]) + " \u2013 " + fmtInt(s["Max_Social"]), false],
+      ["Dominance", s.Dominance, false],
+      ["Aggression", s.Aggression, false],
+      ["Comfort Thr.", s["Comfort_Threshold"] + "%", false]
+    ];
+    statDefs.forEach(function(d) {
+      var block = el("div", "stat-block");
+      block.appendChild(txt("div", "stat-label", d[0]));
+      block.appendChild(txt("div", "stat-value" + (d[2] ? " highlight" : ""), d[1]));
+      statsGrid.appendChild(block);
+    });
+    header.appendChild(statsGrid);
+
+    var habSection = el("div", "habitat-section");
+    habSection.appendChild(txt("div", "section-label", "Habitat Composition"));
+    var habBars = el("div", "habitat-bars");
+    var habDefs = [
+      ["Grassland","Grass","bar-grass"],["Forest","Forest","bar-forest"],
+      ["Water","Water","bar-water"],["Rock","Rock","bar-rock"],["Sand","Sand","bar-sand"]
+    ];
+    habDefs.forEach(function(h) {
+      var v   = Number(s[h[0]]) || 0;
+      var row = el("div", "hab-row");
+      row.appendChild(txt("span", "hab-name", h[1]));
+      var bg   = el("div", "hab-bar-bg");
+      var fill = el("div", "hab-bar-fill " + h[2]);
+      fill.style.width = Math.min(v, 100) + "%";
+      bg.appendChild(fill);
+      row.appendChild(bg);
+      row.appendChild(txt("span", "hab-val", v + "%"));
+      habBars.appendChild(row);
+    });
+    habSection.appendChild(habBars);
+    header.appendChild(habSection);
+    container.appendChild(header);
+
+    // ── B. Description ──
+    if (s.Description && s.Description.toString().trim()) {
+      container.appendChild(txt("div", "description", s.Description));
+    }
+
+    // ── C. Dietary section ──
+    var dietSection = buildDietarySection(s);
+    container.appendChild(dietSection);
+
+    // ── D. Cohabitation section ──
+    var cohaSection = el("div", "coha-section");
+    cohaSection.appendChild(txt("div", "section-title", "\uD83D\uDEA6 Cohabitation Planner"));
+    cohaSection.appendChild(txt("div", "section-subtitle",
+      "Traffic-light compatibility for " + s.Name + " with all other species"));
+
+    var tabsDiv = el("div", "coha-tabs");
+    tabsDiv.id = "cohaTabs";
+    tabsDiv.appendChild(txt("span", "", "Loading\u2026"));
+    cohaSection.appendChild(tabsDiv);
+
+    var searchInput = document.createElement("input");
+    searchInput.type = "text"; searchInput.className = "coha-search";
+    searchInput.id = "cohaSearch"; searchInput.placeholder = "Filter species\u2026";
+    searchInput.autocomplete = "off";
+    searchInput.addEventListener("input", function() {
+      cohaSearch = searchInput.value.toLowerCase().trim(); renderCoha();
+    });
+    cohaSection.appendChild(searchInput);
+
+    var listDiv = el("div", "coha-list");
+    listDiv.id = "cohaContainer";
+    listDiv.appendChild(txt("div", "loading-msg", "Loading compatibility data\u2026"));
+    cohaSection.appendChild(listDiv);
+    container.appendChild(cohaSection);
+  }
+
+  // ── 3. Build the dietary icon tile section ───────────────
+  function buildDietarySection(s) {
+    var section = el("div", "dietary-section");
+    section.appendChild(txt("div", "section-title", "\uD83C\uDF7D\uFE0F Dietary Requirements"));
+    section.appendChild(txt("div", "section-subtitle", "Feeder types, food sources and feeding behaviour"));
+
+    var grid = el("div", "diet-grid");
+
+    // Primary feeder
+    var feederType = s["Feeder_Type"] || "";
+    if (feederType) {
+      grid.appendChild(buildTile(
+        "tile-feeder",
+        FEEDER_ICONS[feederType] || "\uD83C\uDFDB\uFE0F",
+        "Primary Feeder",
+        feederType
+      ));
+    }
+
+    // Food subtype
+    var foodSub = s["Food_Subtype"] || "";
+    if (foodSub) {
+      grid.appendChild(buildTile(
+        "tile-food",
+        "\uD83C\uDF56",   // 🍖
+        "Food Type",
+        foodSub
+      ));
+    }
+
+    // Secondary feeder (only show if not empty)
+    var secFeeder = s["Secondary_Feeder"] || "";
+    if (secFeeder && secFeeder.toString().trim()) {
+      grid.appendChild(buildTile(
+        "tile-secondary",
+        FEEDER_ICONS[secFeeder] || "\u2795",  // ➕
+        "Secondary Feeder",
+        secFeeder
+      ));
+    }
+
+    // Vegetation type (herbivores / omnivores only)
+    var vegType = s["Vegetation_Type"] || "";
+    if (vegType && vegType.toString().trim()) {
+      grid.appendChild(buildTile(
+        "tile-veg",
+        "\uD83C\uDF31",   // 🌱
+        "Vegetation",
+        vegType
+      ));
+    }
+
+    // Hunt style
+    var huntStyle = s["Hunt_Style"] || "";
+    if (huntStyle) {
+      grid.appendChild(buildTile(
+        "tile-hunt",
+        HUNT_ICONS[huntStyle] || "\uD83D\uDCA5",
+        "Behaviour",
+        huntStyle
+      ));
+    }
+
+    // Live feed required
+    var liveFeed = s["Live_Feed"];
+    var liveStr  = (liveFeed === true || liveFeed === "TRUE" || liveFeed === "true") ? "Required" : "Not Required";
+    var liveCls  = (liveStr === "Required") ? "live-yes" : "live-no";
+    var liveTile = buildTile(
+      "tile-live",
+      (liveStr === "Required") ? "\uD83D\uDD34" : "\u26AA",  // 🔴 or ⚪
+      "Live Prey",
+      ""
+    );
+    // Replace the value span with a coloured one
+    var liveVal = liveTile.querySelector(".diet-tile-value");
+    liveVal.textContent = liveStr;
+    liveVal.className = "diet-tile-value " + liveCls;
+    grid.appendChild(liveTile);
+
+    // Feed amount
+    var feedAmt = s["Feed_Amount"] || "";
+    if (feedAmt) {
+      var amtTile = buildTile("tile-amount", "\uD83E\uDDA3", "Daily Intake", "");
+      // Replace plain value with a pill badge
+      var amtVal = amtTile.querySelector(".diet-tile-value");
+      amtVal.textContent = "";
+      var pill = el("span", "amount-pill " + (AMOUNT_CLASSES[feedAmt] || "amount-medium"));
+      pill.textContent = feedAmt;
+      amtVal.appendChild(pill);
+      grid.appendChild(amtTile);
+    }
+
+    section.appendChild(grid);
+    return section;
+  }
+
+  // Creates a single icon tile
+  function buildTile(tileClass, icon, label, value) {
+    var tile  = el("div", "diet-tile " + tileClass);
+    var ico   = el("div", "diet-tile-icon");
+    ico.textContent = icon;
+    var lbl   = txt("div", "diet-tile-label", label);
+    var val   = txt("div", "diet-tile-value", value);
+    tile.appendChild(ico);
+    tile.appendChild(lbl);
+    tile.appendChild(val);
+    return tile;
+  }
+
+  // ── 4. Cohabitation render ───────────────────────────────
+  function renderCoha() {
+    if (!cohaData) return;
+    var tabsEl = document.getElementById("cohaTabs");
+    tabsEl.innerHTML = "";
+    TABS.forEach(function(t) {
+      var count = (cohaData[t] || []).length;
+      var btn   = document.createElement("button");
+      btn.className = "coha-tab" + (t === activeTab ? " tab-" + t : "");
+      var dot = el("span", "dot dot-" + t);
+      var lbl = document.createTextNode(" " + TAB_LABELS[t] + " ");
+      var bdg = txt("span", "badge", count);
+      btn.appendChild(dot); btn.appendChild(lbl); btn.appendChild(bdg);
+      btn.addEventListener("click", function() { setTab(t); });
+      tabsEl.appendChild(btn);
+    });
+
+    var list = (cohaData[activeTab] || []).filter(function(item) {
+      return !cohaSearch || item.name.toLowerCase().indexOf(cohaSearch) !== -1;
+    });
+    var container = document.getElementById("cohaContainer");
+    container.innerHTML = "";
+    if (list.length === 0) {
+      container.appendChild(txt("div", "empty-list",
+        cohaSearch ? "No species matching \"" + cohaSearch + "\"" : "No species in this category"));
+      return;
+    }
+    list.forEach(function(item) {
+      var row = el("div", "coha-item");
+      row.appendChild(el("span", "dot dot-" + activeTab));
+      row.appendChild(txt("span", "coha-item-name", item.name));
+      row.appendChild(txt("span", "coha-item-note", item.notes || ""));
+      row.addEventListener("click", function() { goToSpecies(item.id); });
+      container.appendChild(row);
+    });
+  }
+
+  function setTab(tab) {
+    activeTab = tab; cohaSearch = "";
+    var si = document.getElementById("cohaSearch");
+    if (si) si.value = "";
+    renderCoha();
+  }
+
+  // ── Helpers ──────────────────────────────────────────────
+  function el(tag, className) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    return node;
+  }
+  function txt(tag, className, text) {
+    var node = el(tag, className);
+    node.textContent = (text === null || text === undefined) ? "" : String(text);
+    return node;
+  }
+  function fmtNum(v) { return (v === undefined || v === "") ? "\u2014" : Number(v).toLocaleString(); }
+  function fmtInt(v) { return (v === undefined || v === "") ? "\u2014" : String(Math.round(Number(v))); }
+
+  // ── Navigation ────────────────────────────────────────────
+  function goToSpecies(id) { window.top.location.href = scriptUrl + "?id=" + encodeURIComponent(id); }
+  function goBack()        { window.top.location.href = scriptUrl; }
+</script>
+</div>
+
+<div id="view-enclosure" class="view" style="display:none">
+<div class="page">
+
+  <div class="back-btn" onclick="goBack()">&#8592; Back to Index</div>
+
+  <div class="page-header">
+    <div class="page-title">&#x1F3DF;&#xFE0F; Enclosure Planner</div>
+    <div class="page-sub">Plan your enclosure, configure habitat parameters, and get a live RAG compatibility rating</div>
+  </div>
+
+  <!-- Step indicator -->
+  <div class="steps" id="stepIndicator">
+    <div class="step active" id="step1El">
+      <div class="step-num" id="step1Num">1</div>
+      <span id="step1Label">Choose Type</span>
+    </div>
+    <div class="step-divider">&#8250;</div>
+    <div class="step" id="step2El">
+      <div class="step-num">2</div>
+      <span>Add Species</span>
+    </div>
+    <div class="step-divider">&#8250;</div>
+    <div class="step" id="step3El">
+      <div class="step-num">3</div>
+      <span>Configure &amp; Assess</span>
+    </div>
+  </div>
+
+  <!-- ══ STEP 1: Enclosure type selection ══ -->
+  <div id="typeSelection">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:18px;font-weight:800;margin-bottom:6px">What type of enclosure are you building?</div>
+      <div style="color:var(--muted);font-size:13px">This determines which species can be added and which habitat parameters apply</div>
+    </div>
+
+    <div class="type-grid">
+
+      <div class="type-card" id="card-land" onclick="selectType('land')">
+        <div class="type-card-check">&#x2705;</div>
+        <div class="type-card-icon">&#x1F996;</div>
+        <div class="type-card-name">Land Enclosure</div>
+        <div class="type-card-desc">Standard fenced paddock for terrestrial dinosaurs. Supports herbivores, carnivores, and hybrid species.</div>
+        <div class="type-card-species badge-land" id="count-land">Loading&#8230;</div>
+      </div>
+
+      <div class="type-card" id="card-aviary" onclick="selectType('aviary')">
+        <div class="type-card-check">&#x2705;</div>
+        <div class="type-card-icon">&#x1F985;</div>
+        <div class="type-card-name">Aviary</div>
+        <div class="type-card-desc">Enclosed dome for flying pterosaurs. Requires aviary structure. Species cannot mix with land or marine enclosures.</div>
+        <div class="type-card-species badge-aviary" id="count-aviary">Loading&#8230;</div>
+      </div>
+
+      <div class="type-card" id="card-marine" onclick="selectType('marine')">
+        <div class="type-card-check">&#x2705;</div>
+        <div class="type-card-icon">&#x1F40B;</div>
+        <div class="type-card-name">Lagoon</div>
+        <div class="type-card-desc">Marine habitat for aquatic piscivores. Requires lagoon facility. Cannot share with land or flying species.</div>
+        <div class="type-card-species badge-marine" id="count-marine">Loading&#8230;</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ STEP 2 + 3: Calculator (shown after type chosen) ══ -->
+  <div class="calculator-section" id="calculatorSection">
+
+    <!-- Active type banner + change button -->
+    <div class="type-banner" id="typeBanner"></div>
+    <button class="change-type-btn" onclick="changeType()">&#x21BA; Change enclosure type</button>
+
+    <div class="layout">
+
+      <!-- LEFT: Configuration -->
+      <div>
+
+        <!-- Species roster -->
+        <div class="panel" id="rosterPanel">
+          <div class="panel-title">&#x1F9EC; Species Roster</div>
+          <div class="panel-sub" id="rosterSub">Search to add species to your enclosure</div>
+          <div class="species-select-row">
+            <select class="species-select" id="speciesSelect">
+              <option value="">&#8212; Select a species &#8212;</option>
+            </select>
+            <button class="add-species-btn" id="addSpeciesBtn" onclick="addSelectedSpecies()">+ Add</button>
+          </div>
+          <div class="roster" id="rosterList">
+            <div class="roster-empty">No species added yet</div>
+          </div>
+        </div>
+
+        <!-- Enclosure size -->
+        <div class="panel panel-accent-amber">
+          <div class="panel-title">&#x1F4CF; Enclosure Size</div>
+          <div class="panel-sub" id="sizeSub">Set the available area</div>
+          <div class="slider-group">
+            <div class="slider-row">
+              <span class="slider-label" id="sizeLabel">Area</span>
+              <span class="slider-value" id="sizeVal">10,000 m&#178;</span>
+            </div>
+            <input type="range" id="sizeSlider" min="500" max="200000" step="500" value="10000">
+          </div>
+          <div id="spaceStatus" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+        </div>
+
+        <!-- Habitat composition -->
+        <div class="panel panel-accent-amber" id="habitatPanel">
+          <div class="panel-title" id="habitatTitle">&#x1F30D; Habitat Composition</div>
+          <div class="panel-sub">Sliders auto-balance to 100%</div>
+          <div id="habitatSliders"></div>
+          <div class="hab-total ok" id="habTotal">Total: 100%</div>
+        </div>
+
+        <!-- Feeders (auto-populated) -->
+        <div class="panel panel-accent-purple">
+          <div class="panel-title">&#x1F356; Feeder Requirements</div>
+          <div class="panel-sub">Auto-calculated from your roster &#x2014; minimum feeders needed</div>
+          <div id="feederPanel">
+            <div style="color:var(--muted);font-size:13px">Add species to see feeder requirements</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Results -->
+      <div>
+
+        <!-- RAG -->
+        <div class="panel panel-accent-green">
+          <div class="panel-title">&#x1F6A6; Enclosure Status</div>
+          <div class="panel-sub">Live compatibility assessment</div>
+          <div class="rag-display rag-empty" id="ragDisplay">
+            <div class="rag-icon">&#x1F3DF;&#xFE0F;</div>
+            <div class="rag-status" style="color:var(--muted)">Awaiting Species</div>
+            <div class="rag-desc">Add at least one species to begin</div>
+          </div>
+          <div class="score-bar-wrap" id="scoreBarWrap" style="display:none">
+            <div class="score-bar-bg">
+              <div class="score-bar-fill" id="scoreBarFill" style="width:0%"></div>
+            </div>
+            <div class="score-label">
+              <span>0 — Critical</span>
+              <span id="scoreNum"></span>
+              <span>100 — Ideal</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dietary requirements radar -->
+        <div class="panel panel-accent-amber" id="dietaryChartPanel">
+          <div class="panel-title">&#x1F355; Dietary Requirements</div>
+          <div class="panel-sub">Food sources needed across your roster, with demand level per type</div>
+          <div id="radarContainer">
+            <div class="radar-empty">
+              <div class="radar-empty-icon">&#x1F372;</div>
+              <div class="empty-text">Add species to see dietary breakdown</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Issues -->
+        <div class="panel panel-accent-blue">
+          <div class="panel-title">&#x26A0;&#xFE0F; Issues &amp; Recommendations</div>
+          <div class="panel-sub">Detailed enclosure breakdown</div>
+          <div id="issuesList">
+            <div class="empty-state">
+              <div class="empty-icon">&#x2705;</div>
+              <div class="empty-text">Add species to see analysis</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gene mods -->
+        <div class="panel panel-accent-purple">
+          <div class="panel-title">&#x1F9EC; Gene Modification Recommendations</div>
+          <div class="panel-sub">Suggested genome edits to improve compatibility</div>
+          <div id="geneList">
+            <div class="empty-state">
+              <div class="empty-icon">&#x1F52C;</div>
+              <div class="empty-text">No modifications needed yet</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+  var scriptUrl      = "";
+  var allSpecies     = [];
+  var cohMatrix      = {};
+  var roster         = [];
+  var enclosureType  = null;   // "land" | "aviary" | "marine"
+  // feederCounts removed — feeders are auto-calculated from roster
+
+  // Habitat slider config per enclosure type
+  var HAB_CONFIG = {
+    land:   { keys:["Grassland","Forest","Water","Rock","Sand"],    defaults:{Grassland:40,Forest:20,Water:10,Rock:15,Sand:15} },
+    aviary: { keys:["Grassland","Forest","Water","Rock","Sand"],    defaults:{Grassland:20,Forest:40,Water:10,Rock:15,Sand:15} },
+    marine: { keys:["Water"],                                       defaults:{Water:100} }
+  };
+  var habValues = {};
+
+  var HAB_LABELS = { Grassland:"Grass", Forest:"Forest", Water:"Water", Rock:"Rock", Sand:"Sand" };
+  var HAB_COLORS = { Grassland:"#22e06f", Forest:"#4d9e30", Water:"#4db8ff", Rock:"#a08060", Sand:"#e0c070" };
+
+  // Which Type values from the spreadsheet map to which enclosure type
+  var TYPE_MAP = {
+    land:   ["Land", "Hybrid"],
+    aviary: ["Flying"],
+    marine: ["Marine"]
+  };
+
+  var TYPE_META = {
+    land:   { icon:"\uD83E\uDD96", name:"Land Enclosure",  accentClass:"panel-accent-land",   bannerClass:"banner-land",   sizeLabel:"Paddock Area",   sizeMax:200000, habTitle:"\uD83C\uDF0D Habitat Composition" },
+    aviary: { icon:"\uD83E\uDD85", name:"Aviary",          accentClass:"panel-accent-aviary",  bannerClass:"banner-aviary", sizeLabel:"Aviary Volume",  sizeMax:50000,  habTitle:"\uD83C\uDF0D Aviary Composition" },
+    marine: { icon:"\uD83D\uDC0B", name:"Lagoon",          accentClass:"panel-accent-marine",  bannerClass:"banner-marine", sizeLabel:"Lagoon Volume",  sizeMax:500000, habTitle:"\uD83C\uDF0A Water Composition" }
+  };
+
+  // Gene mod catalogue
+  var GENE_MODS = [
+    {
+      id:"social_boost", name:"Social Stimulation Genes", icon:"\uD83E\uDDE0",
+      triggerFn: function(s, rIds, mx) { return Number(s.Aggression) >= 60; },
+      desc:"Reduces territorial aggression and increases tolerance of other species. Particularly effective for high-aggression carnivores.",
+      effect:"Aggression \u221215  |  Caution risk reduced"
+    },
+    {
+      id:"pack_alpha", name:"Pack Alpha Suppression", icon:"\uD83D\uDC3A",
+      triggerFn: function(s) { return Number(s.Dominance) >= 50 && s.Diet === "Carnivore"; },
+      desc:"Suppresses dominant territorial behaviour in apex carnivores, allowing cautious multi-species setups with reduced breakout risk.",
+      effect:"Dominance \u221220  |  Territory conflict threshold increased"
+    },
+    {
+      id:"herbivore_calm", name:"Stress Response Dampening", icon:"\uD83C\uDF3F",
+      triggerFn: function(s, rIds, mx) {
+        if (s.Diet !== "Herbivore") return false;
+        var nearCarnivore = roster.some(function(r) { return r.Diet === "Carnivore"; });
+        return nearCarnivore && Number(s.Aggression) >= 20;
+      },
+      desc:"Reduces panic responses in herbivores when carnivore species are present nearby or during fence incidents.",
+      effect:"Comfort loss from carnivore proximity \u221230%"
+    },
+    {
+      id:"appetite_control", name:"Appetite Regulation", icon:"\uD83C\uDF56",
+      triggerFn: function(s) { return s.Feed_Amount === "Very High"; },
+      desc:"Reduces feeding frequency for apex species, allowing a single feeder to sustain them longer without comfort penalties.",
+      effect:"Feed interval +40%  |  Feeder count requirement \u22121"
+    },
+    {
+      id:"cohabitation_splice", name:"Cohabitation Trait Splice", icon:"\uD83E\uDD1D",
+      triggerFn: function(s, rIds, mx) {
+        return rIds.some(function(otherId) {
+          if (otherId === s.ID) return false;
+          var e = mx[s.ID] && mx[s.ID][otherId];
+          return e && e.relationship === "hostile";
+        });
+      },
+      desc:"Modifies cohabitation genome sequences to reduce innate hostility. Most effective when combined with Social Stimulation genes.",
+      effect:"Hostile pairings may downgrade to Caution  |  Fence stress reduced"
+    },
+    {
+      id:"marine_adapt", name:"Lagoon Adaptation Genes", icon:"\uD83C\uDF0A",
+      triggerFn: function(s) { return s.Type === "Marine" && roster.length > 1; },
+      desc:"Improves territorial spacing in large marine species sharing a lagoon, reducing predation conflicts.",
+      effect:"Territory conflict in shared lagoons reduced"
+    }
+  ];
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+  google.script.run
+    .withSuccessHandler(function(url) {
+      scriptUrl = url;
+      google.script.run
+        .withSuccessHandler(function(species) {
+          allSpecies = species;
+          updateTypeCounts();
+        })
+        .getSpecies();
+      google.script.run
+        .withSuccessHandler(function(matrix) { cohMatrix = matrix; })
+        .getCohabitationMatrix();
+    })
+    .withFailureHandler(function() { scriptUrl = window.location.href.split("?")[0]; })
+    .getScriptUrl();
+
+  // ── Type counts on cards ──────────────────────────────────────────────────
+  function updateTypeCounts() {
+    Object.keys(TYPE_MAP).forEach(function(type) {
+      var validTypes = TYPE_MAP[type];
+      var count = allSpecies.filter(function(s) {
+        return validTypes.indexOf(s.Type) !== -1;
+      }).length;
+      var el2 = document.getElementById("count-" + type);
+      if (el2) el2.textContent = count + " species available";
+    });
+  }
+
+  // ── Step 1: Select enclosure type ────────────────────────────────────────
+  function selectType(type) {
+    enclosureType = type;
+    roster = [];
+    feederCounts = {};
+
+    // Highlight selected card
+    ["land","aviary","marine"].forEach(function(t) {
+      var card = document.getElementById("card-" + t);
+      card.className = "type-card" + (t === type ? " selected-" + t : "");
+    });
+
+    // Update steps
+    document.getElementById("step1El").className = "step complete";
+    document.getElementById("step1Num").textContent = "\u2713";
+    document.getElementById("step2El").className = "step active";
+
+    // Set roster panel accent class
+    var rosterPanel = document.getElementById("rosterPanel");
+    rosterPanel.className = "panel " + TYPE_META[type].accentClass;
+
+    // Update type banner
+    var meta   = TYPE_META[type];
+    var banner = document.getElementById("typeBanner");
+    banner.className = "type-banner " + meta.bannerClass;
+    banner.innerHTML = "";
+    var ico  = document.createElement("span"); ico.className = "banner-icon"; ico.textContent = meta.icon;
+    var info = document.createElement("div");  info.className = "banner-info";
+    var nm   = document.createElement("div");  nm.className = "banner-name"; nm.textContent = meta.name;
+    var ht   = document.createElement("div");  ht.className = "banner-hint";
+    var typeHint = {
+      land:   "Land species (including Hybrid variants)",
+      aviary: "Flying / Pterosaur species only",
+      marine: "Marine / Piscivore species only"
+    };
+    ht.textContent = typeHint[type] || TYPE_MAP[type].join(" / ");
+    info.appendChild(nm); info.appendChild(ht);
+    banner.appendChild(ico); banner.appendChild(info);
+
+    // Update size slider
+    document.getElementById("sizeLabel").textContent = meta.sizeLabel;
+    var ss = document.getElementById("sizeSlider");
+    ss.max = meta.sizeMax;
+    ss.value = Math.min(Number(ss.value), meta.sizeMax);
+    document.getElementById("sizeVal").textContent = Number(ss.value).toLocaleString() + " m\u00b2";
+    document.getElementById("sizeSub").textContent =
+      type === "marine" ? "Set lagoon volume in cubic metres" :
+      type === "aviary" ? "Set aviary floor area" : "Set paddock area";
+
+    // Update habitat title
+    document.getElementById("habitatTitle").textContent = meta.habTitle;
+
+    // Init habitat values and build sliders
+    var cfg = HAB_CONFIG[type];
+    habValues = JSON.parse(JSON.stringify(cfg.defaults));
+    buildHabitatSliders();
+
+    // Show calculator, hide type selection
+    document.getElementById("typeSelection").style.display = "none";
+    document.getElementById("calculatorSection").className = "calculator-section visible";
+
+    renderRoster();
+    buildFeederPanel();
+    resetResults();
+    populateSelect();
+  }
+
+  function changeType() {
+    enclosureType = null;
+    roster = [];
+    feederCounts = {};
+    var sel = document.getElementById("speciesSelect");
+    if (sel) { sel.innerHTML = '<option value="">&#8212; Select a species &#8212;</option>'; }
+    document.getElementById("typeSelection").style.display = "block";
+    document.getElementById("calculatorSection").className = "calculator-section";
+    document.getElementById("step1El").className = "step active";
+    document.getElementById("step1Num").textContent = "1";
+    document.getElementById("step2El").className = "step";
+    document.getElementById("step3El").className = "step";
+  }
+
+  // ── Habitat sliders ───────────────────────────────────────────────────────
+  function buildHabitatSliders() {
+    var container = document.getElementById("habitatSliders");
+    container.innerHTML = "";
+    var cfg  = HAB_CONFIG[enclosureType];
+    var keys = cfg.keys;
+
+    if (keys.length === 1) {
+      // Marine: just show water as fixed 100%
+      var note = document.createElement("div");
+      note.style.cssText = "font-size:13px;color:var(--muted);padding:8px 0";
+      note.textContent = "Lagoon water composition is always 100%. Adjust temperature and salinity in-game.";
+      container.appendChild(note);
+      document.getElementById("habTotal").style.display = "none";
+      return;
+    }
+    document.getElementById("habTotal").style.display = "block";
+
+    keys.forEach(function(key) {
+      var wrap   = document.createElement("div"); wrap.className = "slider-group";
+      var row    = document.createElement("div"); row.className = "slider-row";
+      var lbl    = document.createElement("span"); lbl.className = "slider-label"; lbl.textContent = HAB_LABELS[key];
+      var valEl  = document.createElement("span"); valEl.className = "slider-value";
+      valEl.id   = "hab-val-" + key; valEl.textContent = habValues[key] + "%";
+      row.appendChild(lbl); row.appendChild(valEl); wrap.appendChild(row);
+      var slider = document.createElement("input");
+      slider.type = "range"; slider.min = "0"; slider.max = "100"; slider.step = "1";
+      slider.value = habValues[key]; slider.id = "hab-slider-" + key;
+      slider.addEventListener("input", function() { onHabSlider(key, Number(slider.value)); });
+      wrap.appendChild(slider);
+      container.appendChild(wrap);
+    });
+    updateHabTotal();
+  }
+
+  function onHabSlider(changedKey, newVal) {
+    var keys   = HAB_CONFIG[enclosureType].keys;
+    var others = keys.filter(function(k) { return k !== changedKey; });
+    habValues[changedKey] = newVal;
+    var remaining = 100 - newVal;
+    var otherSum  = others.reduce(function(s, k) { return s + habValues[k]; }, 0);
+    if (otherSum > 0) {
+      others.forEach(function(k) { habValues[k] = Math.round((habValues[k] / otherSum) * remaining); });
+      var drift = 100 - keys.reduce(function(s, k) { return s + habValues[k]; }, 0);
+      if (drift !== 0) habValues[others[0]] += drift;
+    } else {
+      var share = Math.floor(remaining / others.length);
+      others.forEach(function(k) { habValues[k] = share; });
+      habValues[others[0]] += remaining - share * others.length;
+    }
+    others.forEach(function(k) { if (habValues[k] < 0) habValues[k] = 0; });
+    keys.forEach(function(k) {
+      var s = document.getElementById("hab-slider-" + k);
+      var v = document.getElementById("hab-val-" + k);
+      if (s) s.value = habValues[k];
+      if (v) v.textContent = habValues[k] + "%";
+    });
+    updateHabTotal();
+    recalculate();
+  }
+
+  function updateHabTotal() {
+    var keys  = HAB_CONFIG[enclosureType].keys;
+    var total = keys.reduce(function(s, k) { return s + (habValues[k] || 0); }, 0);
+    var el2   = document.getElementById("habTotal");
+    el2.textContent = "Total: " + total + "%";
+    el2.className   = "hab-total " + (total === 100 ? "ok" : "warn");
+  }
+
+  // ── Size slider ───────────────────────────────────────────────────────────
+  document.getElementById("sizeSlider").addEventListener("input", function() {
+    document.getElementById("sizeVal").textContent = Number(this.value).toLocaleString() + " m\u00b2";
+    recalculate();
+  });
+
+  // ── Species select + roster ───────────────────────────────────────────────
+
+  // Populate the <select> with valid species for this enclosure type,
+  // sorted alphabetically, excluding any already on the roster.
+  function populateSelect() {
+    var sel = document.getElementById("speciesSelect");
+    if (!sel) return;
+    var validTypes = TYPE_MAP[enclosureType];
+    var inRoster   = roster.map(function(r) { return r.species.ID; });
+    var available  = allSpecies.filter(function(s) {
+      return validTypes.indexOf(s.Type) !== -1 && inRoster.indexOf(s.ID) === -1;
+    });
+    available.sort(function(a, b) { return a.Name.localeCompare(b.Name); });
+    sel.innerHTML = '<option value="">— Select a species —</option>';
+    available.forEach(function(s) {
+      var opt = document.createElement("option");
+      opt.value = s.ID;
+      opt.textContent = s.Name + "  (" + s.Diet + ")";
+      sel.appendChild(opt);
+    });
+  }
+
+  function addSelectedSpecies() {
+    var sel = document.getElementById("speciesSelect");
+    if (!sel || !sel.value) return;
+    var s = allSpecies.find(function(sp) { return sp.ID === sel.value; });
+    if (!s) return;
+    addToRoster(s);
+  }
+
+  function addToRoster(s) {
+    if (roster.some(function(r) { return r.species.ID === s.ID; })) return;
+    var minSocial = Math.max(1, Number(s.Min_Social) || 1);
+    roster.push({ species: s, qty: minSocial });
+    if (roster.length >= 2) {
+      document.getElementById("step3El").className = "step active";
+      document.getElementById("step2El").className = "step complete";
+    }
+    populateSelect();
+    renderRoster();
+    buildFeederPanel();
+    recalculate();
+  }
+
+  function removeFromRoster(id) {
+    roster = roster.filter(function(r) { return r.species.ID !== id; });
+    populateSelect();
+    renderRoster();
+    buildFeederPanel();
+    recalculate();
+  }
+
+  function setQty(id, delta) {
+    var entry = roster.find(function(r) { return r.species.ID === id; });
+    if (!entry) return;
+    var newQty = entry.qty + delta;
+    if (newQty < 1) return;
+    entry.qty = newQty;
+    renderRoster();
+    buildFeederPanel();
+    recalculate();
+  }
+
+  function renderRoster() {
+    var list = document.getElementById("rosterList");
+    list.innerHTML = "";
+    if (roster.length === 0) {
+      var e = document.createElement("div"); e.className = "roster-empty";
+      e.textContent = "No species added yet"; list.appendChild(e); return;
+    }
+    roster.forEach(function(r) {
+      var s   = r.species;
+      var qty = r.qty;
+      var mn  = Number(s.Min_Social) || 1;
+      var mx  = Number(s.Max_Social) || 99;
+
+      var herdCls, herdLabel, itemBorderCls;
+      if (qty < mn) {
+        herdCls = "ri-herd-status herd-low";
+        herdLabel = qty + "/" + mn + " min";
+        itemBorderCls = "roster-item herd-warn";
+      } else if (qty > mx) {
+        herdCls = "ri-herd-status herd-over";
+        herdLabel = qty + "/" + mx + " max";
+        itemBorderCls = "roster-item herd-error";
+      } else {
+        herdCls = "ri-herd-status herd-ok";
+        herdLabel = qty + " \u2714";
+        itemBorderCls = "roster-item";
+      }
+
+      var item = document.createElement("div"); item.className = itemBorderCls;
+      var ico  = document.createElement("span"); ico.className = "ri-icon"; ico.textContent = dietIcon(s.Diet);
+
+      var info = document.createElement("div"); info.className = "ri-info";
+      var nm   = document.createElement("div"); nm.className = "ri-name"; nm.textContent = s.Name;
+      var mt   = document.createElement("div"); mt.className = "ri-meta";
+      mt.textContent = s.Diet + " \u00b7 " + (s.Space || 0).toLocaleString() + " m\u00b2 ea \u00b7 Herd: " + mn + "\u2013" + mx;
+      info.appendChild(nm); info.appendChild(mt);
+
+      var badge = document.createElement("span"); badge.className = herdCls; badge.textContent = herdLabel;
+
+      var qtyWrap = document.createElement("div"); qtyWrap.className = "ri-qty";
+      var btnM = document.createElement("button"); btnM.className = "qty-btn"; btnM.textContent = "\u2212";
+      var numEl= document.createElement("span");  numEl.className = "qty-num"; numEl.textContent = qty;
+      var btnP = document.createElement("button"); btnP.className = "qty-btn"; btnP.textContent = "+";
+      (function(sid) {
+        btnM.addEventListener("click", function() { setQty(sid, -1); });
+        btnP.addEventListener("click", function() { setQty(sid, +1); });
+      })(s.ID);
+      qtyWrap.appendChild(btnM); qtyWrap.appendChild(numEl); qtyWrap.appendChild(btnP);
+
+      var rem = document.createElement("button"); rem.className = "ri-remove"; rem.textContent = "\u00d7";
+      rem.title = "Remove species";
+      (function(sid) { rem.addEventListener("click", function() { removeFromRoster(sid); }); })(s.ID);
+
+      item.appendChild(ico); item.appendChild(info); item.appendChild(badge);
+      item.appendChild(qtyWrap); item.appendChild(rem);
+      list.appendChild(item);
+    });
+  }
+
+  // ── Feeder panel (auto-populated, read-only) ────────────────────────────
+  // Returns a map of { feederType: recommendedCount } for use in the RAG check
+  function calcFeederRequirements() {
+    var req = {};   // { "Meat Feeder": { count: 8, recommended: 2 }, ... }
+    roster.forEach(function(r) {
+      var s = r.species;
+      var types = [];
+      if (s.Feeder_Type && s.Feeder_Type.toString().trim())         types.push(s.Feeder_Type.toString().trim());
+      if (s.Secondary_Feeder && s.Secondary_Feeder.toString().trim()) types.push(s.Secondary_Feeder.toString().trim());
+      types.forEach(function(ft) {
+        if (!req[ft]) req[ft] = { animals: 0 };
+        req[ft].animals += r.qty;
+      });
+    });
+    // Recommend 1 feeder per 4 animals of that type, minimum 1
+    Object.keys(req).forEach(function(ft) {
+      req[ft].recommended = Math.max(1, Math.ceil(req[ft].animals / 4));
+    });
+    return req;
+  }
+
+  function buildFeederPanel() {
+    var panel = document.getElementById("feederPanel");
+    if (roster.length === 0) {
+      panel.innerHTML = '<div style="color:var(--muted);font-size:13px">Add species to see feeder requirements</div>';
+      return;
+    }
+    var req = calcFeederRequirements();
+    var keys = Object.keys(req);
+    if (keys.length === 0) {
+      panel.innerHTML = '<div style="color:var(--muted);font-size:13px">No feeder data available for selected species</div>';
+      return;
+    }
+    panel.innerHTML = "";
+    var row = document.createElement("div"); row.className = "feeder-row";
+    keys.forEach(function(ft) {
+      var tile = document.createElement("div"); tile.className = "feeder-tile";
+      var ico  = document.createElement("div"); ico.className = "feeder-tile-icon";
+      ico.textContent = feederEmoji(ft);
+      var info = document.createElement("div"); info.className = "feeder-tile-info";
+      var nm   = document.createElement("div"); nm.className = "feeder-tile-name"; nm.textContent = ft;
+      var cnt  = document.createElement("div"); cnt.className = "feeder-tile-count";
+      cnt.textContent = "Min. " + req[ft].recommended + " feeder" + (req[ft].recommended > 1 ? "s" : "") +
+        "  ·  " + req[ft].animals + " animal" + (req[ft].animals > 1 ? "s" : "");
+      info.appendChild(nm); info.appendChild(cnt);
+      tile.appendChild(ico); tile.appendChild(info);
+      row.appendChild(tile);
+    });
+    panel.appendChild(row);
+    var note = document.createElement("div");
+    note.style.cssText = "font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5";
+    note.textContent = "Feeder counts are calculated automatically. Place at least the minimum recommended in-game.";
+    panel.appendChild(note);
+  }
+
+  // ── Core RAG calculator ───────────────────────────────────────────────────
+  function recalculate() {
+    if (roster.length === 0) { resetResults(); return; }
+
+    var issues    = [];
+    var score     = 100;
+    var rosterIds = roster.map(function(r) { return r.species.ID; });
+    var encSize   = Number(document.getElementById("sizeSlider").value);
+
+    // 1. Space
+    var totalSpace = roster.reduce(function(t, r) { return t + (Number(r.species.Space) || 0) * r.qty; }, 0);
+    var spaceEl    = document.getElementById("spaceStatus");
+    if (totalSpace > 0) {
+      var ratio = encSize / totalSpace;
+      if (ratio < 0.8) {
+        score -= 30;
+        issues.push({ cls:"issue-red", icon:"\uD83D\uDEA8", title:"Enclosure Too Small",
+          detail:"Combined minimum space is " + totalSpace.toLocaleString() + " m\u00b2. Current size is critically insufficient. Expand or remove species." });
+        spaceEl.textContent = "\u26A0\uFE0F Needs " + totalSpace.toLocaleString() + " m\u00b2 minimum";
+        spaceEl.style.color = "var(--rag-red)";
+      } else if (ratio < 1.0) {
+        score -= 15;
+        issues.push({ cls:"issue-amber", icon:"\uD83D\uDCCF", title:"Enclosure Slightly Undersized",
+          detail:"You are " + Math.round((1 - ratio) * 100) + "% below the combined minimum of " + totalSpace.toLocaleString() + " m\u00b2. Consider expanding." });
+        spaceEl.textContent = "\u26A0\uFE0F Just below minimum (" + totalSpace.toLocaleString() + " m\u00b2)";
+        spaceEl.style.color = "var(--rag-amber)";
+      } else {
+        spaceEl.textContent = "\u2705 Sufficient (" + totalSpace.toLocaleString() + " m\u00b2 combined minimum)";
+        spaceEl.style.color = "var(--green)";
+      }
+    }
+
+    // 2. Herd sizes — qty is set directly on each roster entry
+    roster.forEach(function(r) {
+      var s = r.species, n = r.qty;
+      var mn = Number(s.Min_Social) || 1, mx = Number(s.Max_Social) || 99;
+      if (n < mn) {
+        score -= 10;
+        issues.push({ cls:"issue-amber", icon:"\uD83D\uDC65", title:"Herd Too Small: " + s.Name,
+          detail:"Requires at least " + mn + " individuals for social comfort. You have " + n + ". Use the + button on the roster to add more." });
+      }
+      if (n > mx) {
+        score -= 15;
+        issues.push({ cls:"issue-red", icon:"\uD83D\uDC65", title:"Herd Overcrowded: " + s.Name,
+          detail:"Maximum comfortable herd size is " + mx + ". You have " + n + ". Overcrowding causes comfort loss and territorial conflicts." });
+      }
+    });
+
+    // 3. Cohabitation pairs
+    var hostiles = [], cautions = [], ideals = [], seen = {};
+    for (var i = 0; i < roster.length; i++) {
+      for (var j = i + 1; j < roster.length; j++) {
+        var a = roster[i].species, b = roster[j].species;
+        var pk = [a.ID, b.ID].sort().join("|");
+        if (seen[pk]) continue; seen[pk] = true;
+        var rel = "unknown";
+        if (cohMatrix[a.ID] && cohMatrix[a.ID][b.ID])      rel = cohMatrix[a.ID][b.ID].relationship;
+        else if (cohMatrix[b.ID] && cohMatrix[b.ID][a.ID]) rel = cohMatrix[b.ID][a.ID].relationship;
+        if      (rel === "hostile")    { score -= 35; hostiles.push(a.Name + " + " + b.Name); }
+        else if (rel === "caution")    { score -= 12; cautions.push(a.Name + " + " + b.Name); }
+        else if (rel === "ideal")      { score = Math.min(100, score + 3); ideals.push(a.Name + " + " + b.Name); }
+      }
+    }
+    if (hostiles.length) issues.push({ cls:"issue-red", icon:"\uD83D\uDD34", title:"Hostile Pairings (" + hostiles.length + ")", detail:hostiles.join(" \u00b7 ") + ". These species will fight and break fences." });
+    if (cautions.length) issues.push({ cls:"issue-amber", icon:"\uD83D\uDFE1", title:"Caution Pairings (" + cautions.length + ")", detail:cautions.join(" \u00b7 ") + ". Monitor comfort closely." });
+    if (ideals.length)   issues.push({ cls:"issue-green", icon:"\uD83D\uDFE2", title:"Ideal Pairings (" + ideals.length + ")", detail:ideals.join(" \u00b7 ") + ". These combinations actively boost comfort." });
+
+    // 4. Habitat shortfalls (land/aviary only)
+    if (enclosureType !== "marine") {
+      var habIssues = [];
+      roster.forEach(function(r) {
+        var s = r.species;
+        HAB_CONFIG[enclosureType].keys.forEach(function(hab) {
+          var need = Number(s[hab]) || 0, have = habValues[hab] || 0;
+          if (need > 0 && have < need - 5) habIssues.push(s.Name + " needs " + need + "% " + HAB_LABELS[hab] + " (have " + have + "%)");
+        });
+      });
+      if (habIssues.length) { score -= Math.min(30, habIssues.length * 8); issues.push({ cls:"issue-amber", icon:"\uD83C\uDF0D", title:"Habitat Shortfalls (" + habIssues.length + ")", detail:habIssues.join(" \u00b7 ") + ". Adjust the habitat sliders." }); }
+    }
+
+    // 5. Feeder data completeness (counts are auto-calculated now)
+    roster.forEach(function(r) {
+      var s = r.species;
+      if (!s.Feeder_Type || !s.Feeder_Type.toString().trim()) {
+        issues.push({ cls:"issue-amber", icon:"\uD83C\uDF7D\uFE0F",
+          title:"Missing Feeder Data: " + s.Name,
+          detail:"No feeder type recorded for this species. Check the Feeder_Type column in the spreadsheet." });
+      }
+    });
+
+    // 6. Clamp & RAG
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    var ragClass = score >= 70 ? "rag-green" : score >= 35 ? "rag-amber" : "rag-red";
+
+    // 7. Gene mods
+    var geneRecs = [], seenGenes = {};
+    roster.forEach(function(r) {
+      var s = r.species;
+      GENE_MODS.forEach(function(mod) {
+        var k = mod.id + "|" + s.ID;
+        if (seenGenes[k]) return;
+        if (mod.triggerFn(s, rosterIds, cohMatrix)) { seenGenes[k] = true; geneRecs.push({ mod:mod, species:s.Name }); }
+      });
+    });
+
+    renderDietaryChart();
+    renderRAG(score, ragClass);
+    renderIssues(issues);
+    renderGeneMods(geneRecs);
+  }
+
+  function renderRAG(score, ragClass) {
+    var d = document.getElementById("ragDisplay");
+    d.className = "rag-display " + ragClass;
+    var icons  = { "rag-green":"\uD83D\uDFE2", "rag-amber":"\uD83D\uDFE1", "rag-red":"\uD83D\uDD34" };
+    var labels = { "rag-green":"Safe Enclosure", "rag-amber":"Caution Required", "rag-red":"Critical Issues" };
+    var descs  = {
+      "rag-green":"Your enclosure parameters are within acceptable ranges. Monitor comfort levels in-game.",
+      "rag-amber":"Potential issues detected. Review the recommendations below before building.",
+      "rag-red":"Critical problems detected. This enclosure will likely result in conflict or breakouts."
+    };
+    d.innerHTML = "";
+    var ico = document.createElement("div"); ico.className = "rag-icon"; ico.textContent = icons[ragClass];
+    var st  = document.createElement("div"); st.className = "rag-status"; st.textContent = labels[ragClass];
+    var ds  = document.createElement("div"); ds.className = "rag-desc";   ds.textContent = descs[ragClass];
+    d.appendChild(ico); d.appendChild(st); d.appendChild(ds);
+
+    var wrap = document.getElementById("scoreBarWrap"); wrap.style.display = "block";
+    var fill = document.getElementById("scoreBarFill");
+    fill.style.width = score + "%";
+    fill.style.background = ragClass === "rag-green" ? "var(--rag-green)" : ragClass === "rag-amber" ? "var(--rag-amber)" : "var(--rag-red)";
+    document.getElementById("scoreNum").textContent = "Score: " + score + " / 100";
+  }
+
+  function renderIssues(issues) {
+    var list = document.getElementById("issuesList");
+    list.innerHTML = "";
+    if (issues.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">&#x2705;</div><div class="empty-text">No issues \u2014 looking good!</div></div>';
+      return;
+    }
+    var wrap = document.createElement("div"); wrap.className = "issues-list";
+    issues.forEach(function(issue) {
+      var item = document.createElement("div"); item.className = "issue-item " + issue.cls;
+      var ico  = document.createElement("div"); ico.className = "issue-icon"; ico.textContent = issue.icon;
+      var body = document.createElement("div");
+      var t = document.createElement("div"); t.className = "issue-title";  t.textContent = issue.title;
+      var d = document.createElement("div"); d.className = "issue-detail"; d.textContent = issue.detail;
+      body.appendChild(t); body.appendChild(d);
+      item.appendChild(ico); item.appendChild(body); wrap.appendChild(item);
+    });
+    list.appendChild(wrap);
+  }
+
+  function renderGeneMods(recs) {
+    var list = document.getElementById("geneList");
+    list.innerHTML = "";
+    if (recs.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">&#x1F52C;</div><div class="empty-text">No gene modifications needed for this roster</div></div>';
+      return;
+    }
+    recs.forEach(function(rec) {
+      var item = document.createElement("div"); item.className = "gene-item";
+      var hdr  = document.createElement("div"); hdr.className = "gene-header";
+      var ico  = document.createElement("span"); ico.className = "gene-icon";    ico.textContent = rec.mod.icon;
+      var ttl  = document.createElement("span"); ttl.className = "gene-title";   ttl.textContent = rec.mod.name;
+      var spc  = document.createElement("span"); spc.className = "gene-species"; spc.textContent = "Apply to: " + rec.species;
+      hdr.appendChild(ico); hdr.appendChild(ttl); hdr.appendChild(spc);
+      var dsc  = document.createElement("div");  dsc.className = "gene-desc";    dsc.textContent = rec.mod.desc;
+      var eff  = document.createElement("span"); eff.className = "gene-effect";  eff.textContent = rec.mod.effect;
+      item.appendChild(hdr); item.appendChild(dsc); item.appendChild(eff);
+      list.appendChild(item);
+    });
+  }
+
+  // ── Dietary food tile renderer ──────────────────────────────────────────
+
+  var FEED_WEIGHT = { "Low": 1, "Medium": 2, "High": 3, "Very High": 4 };
+
+  // Map demand score to a labelled tier
+  function demandTier(score) {
+    if (score <= 0)  return null;
+    if (score < 4)   return { label: "Low",       cls: "amount-low" };
+    if (score < 10)  return { label: "Medium",    cls: "amount-medium" };
+    if (score < 20)  return { label: "High",      cls: "amount-high" };
+    return               { label: "Very High",  cls: "amount-very-high" };
+  }
+
+  // Icon map for food subtypes
+  var FOOD_ICONS = {
+    "Large Carcass":    "\uD83E\uDD69",   // 🥩
+    "Medium Carcass":   "\uD83C\uDF56",   // 🍖
+    "Small Carcass":    "\uD83C\uDF57",   // 🍗
+    "Fish":             "\uD83D\uDC1F",   // 🐟
+    "Live Fish":        "\uD83D\uDC20",   // 🐠
+    "Small Prey":       "\uD83D\uDC07",   // 🐇
+    "Conifers":         "\uD83C\uDF32",   // 🌲
+    "Palms":            "\uD83C\uDF34",   // 🌴
+    "Low Shrubs":       "\uD83C\uDF3F",   // 🌿
+    "Ferns":            "\uD83C\uDF31",   // 🌱
+    "Shrubs":           "\uD83C\uDF3F",   // 🌿
+    "Flowering Plants": "\uD83C\uDF38",   // 🌸
+    "Seeds":            "\uD83C\uDF3E",   // 🌾
+    "Mixed Vegetation": "\uD83E\uDD66",   // 🥦
+    "Mixed":            "\uD83E\uDD66",   // 🥦
+    "Insects":          "\uD83D\uDC1B",   // 🐛
+    "Eggs":             "\uD83E\uDD5A",   // 🥚
+    "Seeds / Ferns":    "\uD83C\uDF3E",   // 🌾
+    "default":          "\uD83C\uDF7D\uFE0F"  // 🍽️
+  };
+
+  function getFoodIcon(token) {
+    return FOOD_ICONS[token] || FOOD_ICONS["default"];
+  }
+
+  function parseSubtypes(raw) {
+    if (!raw || !raw.toString().trim()) return [];
+    return raw.toString().split("/").map(function(t) { return t.trim(); }).filter(Boolean);
+  }
+
+  function buildFoodDemand() {
+    var demand = {};
+    roster.forEach(function(r) {
+      var s      = r.species;
+      var weight = (FEED_WEIGHT[s.Feed_Amount] || 1) * r.qty;
+      var tokens = parseSubtypes(s.Food_Subtype);
+      var share  = tokens.length > 0 ? weight / tokens.length : 0;
+      tokens.forEach(function(token) {
+        demand[token] = (demand[token] || 0) + share;
+      });
+    });
+    return demand;
+  }
+
+  function renderDietaryChart() {
+    var container = document.getElementById("radarContainer");
+    if (!container) return;
+
+    var demand = buildFoodDemand();
+    var keys   = Object.keys(demand);
+
+    if (keys.length === 0) {
+      container.innerHTML =
+        '<div class="dietary-empty">\uD83C\uDF72 Add species to see dietary breakdown</div>';
+      return;
+    }
+
+    // Sort by demand descending
+    keys.sort(function(a, b) { return demand[b] - demand[a]; });
+
+    container.innerHTML = "";
+    var grid = document.createElement("div"); grid.className = "food-grid";
+
+    keys.forEach(function(k) {
+      var tier = demandTier(demand[k]);
+      if (!tier) return;
+
+      var tile = document.createElement("div"); tile.className = "food-tile";
+
+      var ico  = document.createElement("div"); ico.className = "food-tile-icon";
+      ico.textContent = getFoodIcon(k);
+
+      var body = document.createElement("div"); body.className = "food-tile-body";
+      var nm   = document.createElement("div"); nm.className = "food-tile-name"; nm.textContent = k;
+      var amt  = document.createElement("div"); amt.className = "food-tile-amount " + tier.cls;
+      amt.textContent = tier.label;
+
+      body.appendChild(nm); body.appendChild(amt);
+      tile.appendChild(ico); tile.appendChild(body);
+      grid.appendChild(tile);
+    });
+
+    container.appendChild(grid);
+  }
+
+  function resetResults() {
+    document.getElementById("ragDisplay").className = "rag-display rag-empty";
+    document.getElementById("ragDisplay").innerHTML =
+      '<div class="rag-icon">&#x1F3DF;&#xFE0F;</div>' +
+      '<div class="rag-status" style="color:var(--muted)">Awaiting Species</div>' +
+      '<div class="rag-desc">Add at least one species to begin</div>';
+    document.getElementById("scoreBarWrap").style.display = "none";
+    document.getElementById("issuesList").innerHTML =
+      '<div class="empty-state"><div class="empty-icon">&#x2705;</div><div class="empty-text">Add species to see analysis</div></div>';
+    document.getElementById("geneList").innerHTML =
+      '<div class="empty-state"><div class="empty-icon">&#x1F52C;</div><div class="empty-text">No modifications needed yet</div></div>';
+    document.getElementById("spaceStatus").textContent = "";
+    var rc = document.getElementById("radarContainer");
+    if (rc) rc.innerHTML =
+      '<div class="radar-empty"><div class="radar-empty-icon">&#x1F372;</div>' +
+      '<div class="empty-text">Add species to see dietary breakdown</div></div>';
+  }
+
+  function dietIcon(diet) {
+    return diet === "Carnivore" ? "\uD83E\uDDB4" : diet === "Herbivore" ? "\uD83C\uDF3F" : diet === "Piscivore" ? "\uD83D\uDC1F" : "\uD83E\uDD95";
+  }
+  function feederEmoji(f) {
+    return f === "Meat Feeder" ? "\uD83E\uDDB4" : f === "Ground Feeder" ? "\uD83C\uDF3F" : f === "Tall Feeder" ? "\uD83C\uDF32" : f === "Marine Feeder" ? "\uD83D\uDC1F" : f === "Gyrosphere Bait" ? "\uD83C\uDFAF" : "\uD83C\uDF7D\uFE0F";
+  }
+
+  function goBack() { window.top.location.href = scriptUrl; }
+</script>
+</div>
+
+<script>
+
+  // ══════════════════════════════════════════════════════════════
+  // JWEApp — data layer + view router
+  // ══════════════════════════════════════════════════════════════
+  var JWEApp = {
+    _data:    null,
+    _loaded:  false,
+    _cbs:     [],
+    currentSpeciesId: null,
+
+    ready: function(cb) {
+      if (JWEApp._loaded) { cb(JWEApp._data); }
+      else { JWEApp._cbs.push(cb); }
+    },
+
+    navigate: function(view, param) {
+      document.querySelectorAll(".view").forEach(function(v) {
+        v.style.display = "none";
+      });
+      window.scrollTo(0, 0);
+
+      if (view === "index") {
+        document.getElementById("view-index").style.display = "block";
+        JWEApp.currentSpeciesId = null;
+      } else if (view === "species") {
+        JWEApp.currentSpeciesId = param;
+        document.getElementById("view-species").style.display = "block";
+        bootSpeciesView();
+      } else if (view === "enclosure") {
+        document.getElementById("view-enclosure").style.display = "block";
+      }
+    }
+  };
+
+  window.addEventListener("DOMContentLoaded", function() {
+    fetch("data.json")
+      .then(function(r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function(d) {
+        JWEApp._data   = d;
+        JWEApp._loaded = true;
+        JWEApp._cbs.forEach(function(cb) { cb(d); });
+        JWEApp._cbs = [];
+        bootIndexView();
+      })
+      .catch(function(err) {
+        var el = document.getElementById("app-error");
+        if (el) {
+          el.style.display = "block";
+          el.textContent = "\u26A0\uFE0F Could not load species data. Make sure data.json is present in the app folder.";
+        }
+      });
+  });
+
+  // ════════════════ INDEX VIEW ════════════════
+
+  var allSpecies   = [];
+  var activeFilter = "all";
+  var searchTerm   = "";
+  var scriptUrl    = "";
+
+  function bootIndexView() {
+    JWEApp.ready(function(data) {
+      document.getElementById("loadingMsg").style.display = "none";
+      allSpecies = data.species;
+      render();
+    });
+  }
+
+            
+    // (boot handled by bootIndexView)
+
+    // ── 2. Render the card grid ──
+    function render() {
+      var list = allSpecies.slice();
+
+      if (activeFilter !== "all") {
+        var parts = activeFilter.split(":");
+        var key   = parts[0];
+        var val   = parts[1];
+        list = list.filter(function(s) {
+          if (key === "diet") return s.Diet === val;
+          if (key === "type") return s.Type === val || (val === "Land" && (s.Hybrid === true || s.Hybrid === "TRUE"));
+          return true;
+        });
+      }
+
+      if (searchTerm) {
+        list = list.filter(function(s) {
+          return s.Name.toLowerCase().indexOf(searchTerm) !== -1;
+        });
+      }
+
+      document.getElementById("resultsCount").textContent =
+        list.length + " species" + (list.length !== allSpecies.length ? " (filtered)" : "");
+
+      var container = document.getElementById("speciesContainer");
+      container.innerHTML = "";
+
+      if (list.length === 0) {
+        var empty = document.createElement("div");
+        empty.className = "empty";
+        empty.innerHTML = '<div class="empty-icon">&#x1F995;</div><div>No species found</div>';
+        container.appendChild(empty);
+        return;
+      }
+
+      list.forEach(function(s) {
+        container.appendChild(buildCard(s));
+      });
+    }
+
+    function buildCard(s) {
+      var isBase    = (s.DLC === "Base Game");
+      var dietClass = "tag tag-" + (s.Diet || "").toLowerCase();
+      var typeClass = "tag tag-" + (s.Type || "").toLowerCase();
+      var isHybrid  = (s.Hybrid === true || s.Hybrid === "TRUE");
+
+      var card = document.createElement("div");
+      card.className = "card";
+      card.addEventListener("click", function() { goToSpecies(s.ID); });
+
+      var name = document.createElement("div");
+      name.className   = "card-name";
+      name.textContent = s.Name;
+      card.appendChild(name);
+
+      var era = document.createElement("div");
+      era.className   = "card-era";
+      era.textContent = s.Era;
+      card.appendChild(era);
+
+      var tagsRow = document.createElement("div");
+      tagsRow.className = "card-tags";
+      tagsRow.appendChild(mkTag(dietClass, s.Diet));
+      tagsRow.appendChild(mkTag(typeClass, s.Type));
+      if (isHybrid) tagsRow.appendChild(mkTag("tag tag-hybrid", "Hybrid"));
+      if (!isBase) tagsRow.appendChild(mkTag("tag tag-dlc", s.DLC));
+      card.appendChild(tagsRow);
+
+      var statsGrid = document.createElement("div");
+      statsGrid.className = "card-stats";
+      var statDefs = [
+        ["Space Req.",    fmtNum(s.Space) + " m\u00b2"],
+        ["Herd Size",     fmtInt(s["Min_Social"]) + "\u2013" + fmtInt(s["Max_Social"])],
+        ["Dominance",     fmtNum(s.Dominance)],
+        ["Comfort Thr.",  fmtNum(s["Comfort_Threshold"]) + "%"]
+      ];
+      statDefs.forEach(function(d) {
+        var stat  = document.createElement("div");
+        stat.className = "stat";
+        var lbl   = document.createElement("div");
+        lbl.className   = "stat-label";
+        lbl.textContent = d[0];
+        var val   = document.createElement("div");
+        val.className   = "stat-value";
+        val.textContent = d[1];
+        stat.appendChild(lbl);
+        stat.appendChild(val);
+        statsGrid.appendChild(stat);
+      });
+      card.appendChild(statsGrid);
+
+      return card;
+    }
+
+    function mkTag(cls, text) {
+      var span = document.createElement("span");
+      span.className   = cls;
+      span.textContent = text || "";
+      return span;
+    }
+    function fmtNum(v) { return (v === undefined || v === "") ? "\u2014" : Number(v).toLocaleString(); }
+    function fmtInt(v) { return (v === undefined || v === "") ? "\u2014" : String(Math.round(Number(v))); }
+
+    // ── 3. Navigation — uses the real script URL, not window.location ──
+    function goToEnclosure() { JWEApp.navigate("enclosure"); }
+    function goToSpecies(id)  { JWEApp.navigate("species", id); }
+
+    // ── 4. Search + filter listeners ──
+    document.getElementById("searchBox").addEventListener("input", function(e) {
+      searchTerm = e.target.value.toLowerCase().trim();
+      render();
+    });
+
+    document.getElementById("filterRow").addEventListener("click", function(e) {
+      var btn = e.target.closest(".filter-btn");
+      if (!btn) return;
+      document.querySelectorAll(".filter-btn").forEach(function(b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      activeFilter = btn.dataset.filter;
+      render();
+    });
+  
+
+  // ════════════════ SPECIES VIEW ════════════════
+
+  var speciesId  = "";
+  var cohaData   = null;
+  var activeTab  = "ideal";
+  var cohaSearch = "";
+
+  function bootSpeciesView() {
+    cohaData   = null;
+    activeTab  = "ideal";
+    cohaSearch = "";
+    speciesId  = JWEApp.currentSpeciesId || "";
+    var container = document.getElementById("profileContainer");
+    if (container) container.innerHTML = '<div class="loading-msg">Loading…</div>';
+    JWEApp.ready(function(data) {
+      var s = data.species.find(function(sp) { return String(sp.ID) === String(speciesId); });
+      onSpeciesLoaded(s || null);
+    });
+  }
+
+
+  var TABS = ["ideal", "compatible", "caution", "neutral", "hostile"];
+  var TAB_LABELS = { ideal:"Ideal", compatible:"Compatible", caution:"Caution", neutral:"Neutral", hostile:"Hostile" };
+
+  // ── Icon maps — no backticks used anywhere ────────────────────────────
+  var FEEDER_ICONS = {
+    "Meat Feeder":   "\uD83E\uDDB4",   // 🦴
+    "Ground Feeder": "\uD83C\uDF3F",   // 🌿
+    "Tall Feeder":   "\uD83C\uDF32",   // 🌲
+    "Marine Feeder": "\uD83D\uDC1F",   // 🐟
+    "Gyrosphere Bait": "\uD83C\uDFAF"  // 🎯
+  };
+  var HUNT_ICONS = {
+    "Active Hunter": "\uD83D\uDC08",   // 🐈 → use tiger-ish predator
+    "Ambush":        "\uD83D\uDC09",   // 🐉
+    "Scavenger":     "\uD83E\uDD85",   // 🦅
+    "Grazer":        "\uD83D\uDC04",   // 🐄
+    "Filter Feeder": "\uD83D\uDC0B"    // 🐋
+  };
+  var AMOUNT_ICONS = {
+    "Low":       "\u25A1\u25A1\u25A1\u25A1",  // □□□□
+    "Medium":    "\u25A0\u25A0\u25A1\u25A1",  // ■■□□
+    "High":      "\u25A0\u25A0\u25A0\u25A1",  // ■■■□
+    "Very High": "\u25A0\u25A0\u25A0\u25A0"   // ■■■■
+  };
+  var AMOUNT_CLASSES = {
+    "Low": "amount-low", "Medium": "amount-medium",
+    "High": "amount-high", "Very High": "amount-very-high"
+  };
+
+  // (boot handled by bootSpeciesView)
+
+  function onSpeciesLoaded(s) {
+    if (!s) {
+      document.getElementById("profileContainer").innerHTML =
+        '<div class="error-msg">Species "' + speciesId + '" not found.</div>';
+      return;
+    }
+    document.title = "JWE Codex \u2014 " + s.Name;
+    buildProfileDOM(s);
+    JWEApp.ready(function(data) {
+      onCohaLoaded(data.compat[speciesId] || { ideal:[], compatible:[], caution:[], neutral:[], hostile:[] });
+    });
+  }
+
+  function onError(err) {
+    document.getElementById("profileContainer").innerHTML =
+      '<div class="error-msg">Error: ' + (err.message || err) + '</div>';
+  }
+
+  function onCohaLoaded(groups) { cohaData = groups; renderCoha(); }
+
+  // ── 2. Build full profile DOM ────────────────────────────
+  function buildProfileDOM(s) {
+    var container = document.getElementById("profileContainer");
+    container.innerHTML = "";
+
+    var isBase    = (s.DLC === "Base Game");
+    var dietClass = "tag-" + (s.Diet  || "unknown").toLowerCase();
+    var typeClass = "tag-" + (s.Type  || "unknown").toLowerCase();
+    var isHybrid  = (s.Hybrid === true || s.Hybrid === "TRUE");
+
+    // ── A. Profile header ──
+    var header = el("div", "profile-header");
+    header.appendChild(txt("div", "species-name", s.Name));
+    header.appendChild(txt("div", "species-era",  s.Era));
+
+    var tags = el("div", "species-tags");
+    tags.appendChild(txt("span", "tag " + dietClass, s.Diet));
+    tags.appendChild(txt("span", "tag " + typeClass, s.Type));
+    if (isHybrid) tags.appendChild(txt("span", "tag tag-hybrid", "Hybrid"));
+    if (!isBase) tags.appendChild(txt("span", "tag tag-dlc", s.DLC));
+    header.appendChild(tags);
+
+    var statsGrid = el("div", "stats-grid");
+    var statDefs = [
+      ["Space Required", fmtNum(s.Space) + " m\u00b2", true],
+      ["Herd Size", fmtInt(s["Min_Social"]) + " \u2013 " + fmtInt(s["Max_Social"]), false],
+      ["Dominance", s.Dominance, false],
+      ["Aggression", s.Aggression, false],
+      ["Comfort Thr.", s["Comfort_Threshold"] + "%", false]
+    ];
+    statDefs.forEach(function(d) {
+      var block = el("div", "stat-block");
+      block.appendChild(txt("div", "stat-label", d[0]));
+      block.appendChild(txt("div", "stat-value" + (d[2] ? " highlight" : ""), d[1]));
+      statsGrid.appendChild(block);
+    });
+    header.appendChild(statsGrid);
+
+    var habSection = el("div", "habitat-section");
+    habSection.appendChild(txt("div", "section-label", "Habitat Composition"));
+    var habBars = el("div", "habitat-bars");
+    var habDefs = [
+      ["Grassland","Grass","bar-grass"],["Forest","Forest","bar-forest"],
+      ["Water","Water","bar-water"],["Rock","Rock","bar-rock"],["Sand","Sand","bar-sand"]
+    ];
+    habDefs.forEach(function(h) {
+      var v   = Number(s[h[0]]) || 0;
+      var row = el("div", "hab-row");
+      row.appendChild(txt("span", "hab-name", h[1]));
+      var bg   = el("div", "hab-bar-bg");
+      var fill = el("div", "hab-bar-fill " + h[2]);
+      fill.style.width = Math.min(v, 100) + "%";
+      bg.appendChild(fill);
+      row.appendChild(bg);
+      row.appendChild(txt("span", "hab-val", v + "%"));
+      habBars.appendChild(row);
+    });
+    habSection.appendChild(habBars);
+    header.appendChild(habSection);
+    container.appendChild(header);
+
+    // ── B. Description ──
+    if (s.Description && s.Description.toString().trim()) {
+      container.appendChild(txt("div", "description", s.Description));
+    }
+
+    // ── C. Dietary section ──
+    var dietSection = buildDietarySection(s);
+    container.appendChild(dietSection);
+
+    // ── D. Cohabitation section ──
+    var cohaSection = el("div", "coha-section");
+    cohaSection.appendChild(txt("div", "section-title", "\uD83D\uDEA6 Cohabitation Planner"));
+    cohaSection.appendChild(txt("div", "section-subtitle",
+      "Traffic-light compatibility for " + s.Name + " with all other species"));
+
+    var tabsDiv = el("div", "coha-tabs");
+    tabsDiv.id = "cohaTabs";
+    tabsDiv.appendChild(txt("span", "", "Loading\u2026"));
+    cohaSection.appendChild(tabsDiv);
+
+    var searchInput = document.createElement("input");
+    searchInput.type = "text"; searchInput.className = "coha-search";
+    searchInput.id = "cohaSearch"; searchInput.placeholder = "Filter species\u2026";
+    searchInput.autocomplete = "off";
+    searchInput.addEventListener("input", function() {
+      cohaSearch = searchInput.value.toLowerCase().trim(); renderCoha();
+    });
+    cohaSection.appendChild(searchInput);
+
+    var listDiv = el("div", "coha-list");
+    listDiv.id = "cohaContainer";
+    listDiv.appendChild(txt("div", "loading-msg", "Loading compatibility data\u2026"));
+    cohaSection.appendChild(listDiv);
+    container.appendChild(cohaSection);
+  }
+
+  // ── 3. Build the dietary icon tile section ───────────────
+  function buildDietarySection(s) {
+    var section = el("div", "dietary-section");
+    section.appendChild(txt("div", "section-title", "\uD83C\uDF7D\uFE0F Dietary Requirements"));
+    section.appendChild(txt("div", "section-subtitle", "Feeder types, food sources and feeding behaviour"));
+
+    var grid = el("div", "diet-grid");
+
+    // Primary feeder
+    var feederType = s["Feeder_Type"] || "";
+    if (feederType) {
+      grid.appendChild(buildTile(
+        "tile-feeder",
+        FEEDER_ICONS[feederType] || "\uD83C\uDFDB\uFE0F",
+        "Primary Feeder",
+        feederType
+      ));
+    }
+
+    // Food subtype
+    var foodSub = s["Food_Subtype"] || "";
+    if (foodSub) {
+      grid.appendChild(buildTile(
+        "tile-food",
+        "\uD83C\uDF56",   // 🍖
+        "Food Type",
+        foodSub
+      ));
+    }
+
+    // Secondary feeder (only show if not empty)
+    var secFeeder = s["Secondary_Feeder"] || "";
+    if (secFeeder && secFeeder.toString().trim()) {
+      grid.appendChild(buildTile(
+        "tile-secondary",
+        FEEDER_ICONS[secFeeder] || "\u2795",  // ➕
+        "Secondary Feeder",
+        secFeeder
+      ));
+    }
+
+    // Vegetation type (herbivores / omnivores only)
+    var vegType = s["Vegetation_Type"] || "";
+    if (vegType && vegType.toString().trim()) {
+      grid.appendChild(buildTile(
+        "tile-veg",
+        "\uD83C\uDF31",   // 🌱
+        "Vegetation",
+        vegType
+      ));
+    }
+
+    // Hunt style
+    var huntStyle = s["Hunt_Style"] || "";
+    if (huntStyle) {
+      grid.appendChild(buildTile(
+        "tile-hunt",
+        HUNT_ICONS[huntStyle] || "\uD83D\uDCA5",
+        "Behaviour",
+        huntStyle
+      ));
+    }
+
+    // Live feed required
+    var liveFeed = s["Live_Feed"];
+    var liveStr  = (liveFeed === true || liveFeed === "TRUE" || liveFeed === "true") ? "Required" : "Not Required";
+    var liveCls  = (liveStr === "Required") ? "live-yes" : "live-no";
+    var liveTile = buildTile(
+      "tile-live",
+      (liveStr === "Required") ? "\uD83D\uDD34" : "\u26AA",  // 🔴 or ⚪
+      "Live Prey",
+      ""
+    );
+    // Replace the value span with a coloured one
+    var liveVal = liveTile.querySelector(".diet-tile-value");
+    liveVal.textContent = liveStr;
+    liveVal.className = "diet-tile-value " + liveCls;
+    grid.appendChild(liveTile);
+
+    // Feed amount
+    var feedAmt = s["Feed_Amount"] || "";
+    if (feedAmt) {
+      var amtTile = buildTile("tile-amount", "\uD83E\uDDA3", "Daily Intake", "");
+      // Replace plain value with a pill badge
+      var amtVal = amtTile.querySelector(".diet-tile-value");
+      amtVal.textContent = "";
+      var pill = el("span", "amount-pill " + (AMOUNT_CLASSES[feedAmt] || "amount-medium"));
+      pill.textContent = feedAmt;
+      amtVal.appendChild(pill);
+      grid.appendChild(amtTile);
+    }
+
+    section.appendChild(grid);
+    return section;
+  }
+
+  // Creates a single icon tile
+  function buildTile(tileClass, icon, label, value) {
+    var tile  = el("div", "diet-tile " + tileClass);
+    var ico   = el("div", "diet-tile-icon");
+    ico.textContent = icon;
+    var lbl   = txt("div", "diet-tile-label", label);
+    var val   = txt("div", "diet-tile-value", value);
+    tile.appendChild(ico);
+    tile.appendChild(lbl);
+    tile.appendChild(val);
+    return tile;
+  }
+
+  // ── 4. Cohabitation render ───────────────────────────────
+  function renderCoha() {
+    if (!cohaData) return;
+    var tabsEl = document.getElementById("cohaTabs");
+    tabsEl.innerHTML = "";
+    TABS.forEach(function(t) {
+      var count = (cohaData[t] || []).length;
+      var btn   = document.createElement("button");
+      btn.className = "coha-tab" + (t === activeTab ? " tab-" + t : "");
+      var dot = el("span", "dot dot-" + t);
+      var lbl = document.createTextNode(" " + TAB_LABELS[t] + " ");
+      var bdg = txt("span", "badge", count);
+      btn.appendChild(dot); btn.appendChild(lbl); btn.appendChild(bdg);
+      btn.addEventListener("click", function() { setTab(t); });
+      tabsEl.appendChild(btn);
+    });
+
+    var list = (cohaData[activeTab] || []).filter(function(item) {
+      return !cohaSearch || item.name.toLowerCase().indexOf(cohaSearch) !== -1;
+    });
+    var container = document.getElementById("cohaContainer");
+    container.innerHTML = "";
+    if (list.length === 0) {
+      container.appendChild(txt("div", "empty-list",
+        cohaSearch ? "No species matching \"" + cohaSearch + "\"" : "No species in this category"));
+      return;
+    }
+    list.forEach(function(item) {
+      var row = el("div", "coha-item");
+      row.appendChild(el("span", "dot dot-" + activeTab));
+      row.appendChild(txt("span", "coha-item-name", item.name));
+      row.appendChild(txt("span", "coha-item-note", item.notes || ""));
+      row.addEventListener("click", function() { goToSpecies(item.id); });
+      container.appendChild(row);
+    });
+  }
+
+  function setTab(tab) {
+    activeTab = tab; cohaSearch = "";
+    var si = document.getElementById("cohaSearch");
+    if (si) si.value = "";
+    renderCoha();
+  }
+
+  // ── Helpers ──────────────────────────────────────────────
+  function el(tag, className) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    return node;
+  }
+  function txt(tag, className, text) {
+    var node = el(tag, className);
+    node.textContent = (text === null || text === undefined) ? "" : String(text);
+    return node;
+  }
+  function fmtNum(v) { return (v === undefined || v === "") ? "\u2014" : Number(v).toLocaleString(); }
+  function fmtInt(v) { return (v === undefined || v === "") ? "\u2014" : String(Math.round(Number(v))); }
+
+  // ── Navigation ────────────────────────────────────────────
+  function goToSpecies(id) { JWEApp.navigate("species", id); }
+  function goBack()        { JWEApp.navigate("index"); }
+
+
+  // ════════════════ ENCLOSURE VIEW ════════════════
+
+  var enclosureType  = null;
+  var feederCounts   = {};
+
+  function bootEnclosureView() {
+    // Enclosure boots itself via GENE_MODS / HAB_CONFIG declarations
+    // Data is loaded via JWEApp.ready in the boot block below
+  }
+
+  // allSpecies shared with index view
+  var cohMatrix      = {};
+  var roster         = [];
+  var enclosureType  = null;   // "land" | "aviary" | "marine"
+  // feederCounts removed — feeders are auto-calculated from roster
+
+  // Habitat slider config per enclosure type
+  var HAB_CONFIG = {
+    land:   { keys:["Grassland","Forest","Water","Rock","Sand"],    defaults:{Grassland:40,Forest:20,Water:10,Rock:15,Sand:15} },
+    aviary: { keys:["Grassland","Forest","Water","Rock","Sand"],    defaults:{Grassland:20,Forest:40,Water:10,Rock:15,Sand:15} },
+    marine: { keys:["Water"],                                       defaults:{Water:100} }
+  };
+  var habValues = {};
+
+  var HAB_LABELS = { Grassland:"Grass", Forest:"Forest", Water:"Water", Rock:"Rock", Sand:"Sand" };
+  var HAB_COLORS = { Grassland:"#22e06f", Forest:"#4d9e30", Water:"#4db8ff", Rock:"#a08060", Sand:"#e0c070" };
+
+  // Which Type values from the spreadsheet map to which enclosure type
+  var TYPE_MAP = {
+    land:   ["Land", "Hybrid"],
+    aviary: ["Flying"],
+    marine: ["Marine"]
+  };
+
+  var TYPE_META = {
+    land:   { icon:"\uD83E\uDD96", name:"Land Enclosure",  accentClass:"panel-accent-land",   bannerClass:"banner-land",   sizeLabel:"Paddock Area",   sizeMax:200000, habTitle:"\uD83C\uDF0D Habitat Composition" },
+    aviary: { icon:"\uD83E\uDD85", name:"Aviary",          accentClass:"panel-accent-aviary",  bannerClass:"banner-aviary", sizeLabel:"Aviary Volume",  sizeMax:50000,  habTitle:"\uD83C\uDF0D Aviary Composition" },
+    marine: { icon:"\uD83D\uDC0B", name:"Lagoon",          accentClass:"panel-accent-marine",  bannerClass:"banner-marine", sizeLabel:"Lagoon Volume",  sizeMax:500000, habTitle:"\uD83C\uDF0A Water Composition" }
+  };
+
+  // Gene mod catalogue
+  var GENE_MODS = [
+    {
+      id:"social_boost", name:"Social Stimulation Genes", icon:"\uD83E\uDDE0",
+      triggerFn: function(s, rIds, mx) { return Number(s.Aggression) >= 60; },
+      desc:"Reduces territorial aggression and increases tolerance of other species. Particularly effective for high-aggression carnivores.",
+      effect:"Aggression \u221215  |  Caution risk reduced"
+    },
+    {
+      id:"pack_alpha", name:"Pack Alpha Suppression", icon:"\uD83D\uDC3A",
+      triggerFn: function(s) { return Number(s.Dominance) >= 50 && s.Diet === "Carnivore"; },
+      desc:"Suppresses dominant territorial behaviour in apex carnivores, allowing cautious multi-species setups with reduced breakout risk.",
+      effect:"Dominance \u221220  |  Territory conflict threshold increased"
+    },
+    {
+      id:"herbivore_calm", name:"Stress Response Dampening", icon:"\uD83C\uDF3F",
+      triggerFn: function(s, rIds, mx) {
+        if (s.Diet !== "Herbivore") return false;
+        var nearCarnivore = roster.some(function(r) { return r.Diet === "Carnivore"; });
+        return nearCarnivore && Number(s.Aggression) >= 20;
+      },
+      desc:"Reduces panic responses in herbivores when carnivore species are present nearby or during fence incidents.",
+      effect:"Comfort loss from carnivore proximity \u221230%"
+    },
+    {
+      id:"appetite_control", name:"Appetite Regulation", icon:"\uD83C\uDF56",
+      triggerFn: function(s) { return s.Feed_Amount === "Very High"; },
+      desc:"Reduces feeding frequency for apex species, allowing a single feeder to sustain them longer without comfort penalties.",
+      effect:"Feed interval +40%  |  Feeder count requirement \u22121"
+    },
+    {
+      id:"cohabitation_splice", name:"Cohabitation Trait Splice", icon:"\uD83E\uDD1D",
+      triggerFn: function(s, rIds, mx) {
+        return rIds.some(function(otherId) {
+          if (otherId === s.ID) return false;
+          var e = mx[s.ID] && mx[s.ID][otherId];
+          return e && e.relationship === "hostile";
+        });
+      },
+      desc:"Modifies cohabitation genome sequences to reduce innate hostility. Most effective when combined with Social Stimulation genes.",
+      effect:"Hostile pairings may downgrade to Caution  |  Fence stress reduced"
+    },
+    {
+      id:"marine_adapt", name:"Lagoon Adaptation Genes", icon:"\uD83C\uDF0A",
+      triggerFn: function(s) { return s.Type === "Marine" && roster.length > 1; },
+      desc:"Improves territorial spacing in large marine species sharing a lagoon, reducing predation conflicts.",
+      effect:"Territory conflict in shared lagoons reduced"
+    }
+  ];
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+  JWEApp.ready(function(data) {
+    allSpecies = data.species;
+    cohMatrix  = data.matrix;
+    updateTypeCounts();
+  });
+
+  // ── Type counts on cards ──────────────────────────────────────────────────
+  function updateTypeCounts() {
+    Object.keys(TYPE_MAP).forEach(function(type) {
+      var validTypes = TYPE_MAP[type];
+      var count = allSpecies.filter(function(s) {
+        return validTypes.indexOf(s.Type) !== -1;
+      }).length;
+      var el2 = document.getElementById("count-" + type);
+      if (el2) el2.textContent = count + " species available";
+    });
+  }
+
+  // ── Step 1: Select enclosure type ────────────────────────────────────────
+  function selectType(type) {
+    enclosureType = type;
+    roster = [];
+    feederCounts = {};
+
+    // Highlight selected card
+    ["land","aviary","marine"].forEach(function(t) {
+      var card = document.getElementById("card-" + t);
+      card.className = "type-card" + (t === type ? " selected-" + t : "");
+    });
+
+    // Update steps
+    document.getElementById("step1El").className = "step complete";
+    document.getElementById("step1Num").textContent = "\u2713";
+    document.getElementById("step2El").className = "step active";
+
+    // Set roster panel accent class
+    var rosterPanel = document.getElementById("rosterPanel");
+    rosterPanel.className = "panel " + TYPE_META[type].accentClass;
+
+    // Update type banner
+    var meta   = TYPE_META[type];
+    var banner = document.getElementById("typeBanner");
+    banner.className = "type-banner " + meta.bannerClass;
+    banner.innerHTML = "";
+    var ico  = document.createElement("span"); ico.className = "banner-icon"; ico.textContent = meta.icon;
+    var info = document.createElement("div");  info.className = "banner-info";
+    var nm   = document.createElement("div");  nm.className = "banner-name"; nm.textContent = meta.name;
+    var ht   = document.createElement("div");  ht.className = "banner-hint";
+    var typeHint = {
+      land:   "Land species (including Hybrid variants)",
+      aviary: "Flying / Pterosaur species only",
+      marine: "Marine / Piscivore species only"
+    };
+    ht.textContent = typeHint[type] || TYPE_MAP[type].join(" / ");
+    info.appendChild(nm); info.appendChild(ht);
+    banner.appendChild(ico); banner.appendChild(info);
+
+    // Update size slider
+    document.getElementById("sizeLabel").textContent = meta.sizeLabel;
+    var ss = document.getElementById("sizeSlider");
+    ss.max = meta.sizeMax;
+    ss.value = Math.min(Number(ss.value), meta.sizeMax);
+    document.getElementById("sizeVal").textContent = Number(ss.value).toLocaleString() + " m\u00b2";
+    document.getElementById("sizeSub").textContent =
+      type === "marine" ? "Set lagoon volume in cubic metres" :
+      type === "aviary" ? "Set aviary floor area" : "Set paddock area";
+
+    // Update habitat title
+    document.getElementById("habitatTitle").textContent = meta.habTitle;
+
+    // Init habitat values and build sliders
+    var cfg = HAB_CONFIG[type];
+    habValues = JSON.parse(JSON.stringify(cfg.defaults));
+    buildHabitatSliders();
+
+    // Show calculator, hide type selection
+    document.getElementById("typeSelection").style.display = "none";
+    document.getElementById("calculatorSection").className = "calculator-section visible";
+
+    renderRoster();
+    buildFeederPanel();
+    resetResults();
+    populateSelect();
+  }
+
+  function changeType() {
+    enclosureType = null;
+    roster = [];
+    feederCounts = {};
+    var sel = document.getElementById("speciesSelect");
+    if (sel) { sel.innerHTML = '<option value="">&#8212; Select a species &#8212;</option>'; }
+    document.getElementById("typeSelection").style.display = "block";
+    document.getElementById("calculatorSection").className = "calculator-section";
+    document.getElementById("step1El").className = "step active";
+    document.getElementById("step1Num").textContent = "1";
+    document.getElementById("step2El").className = "step";
+    document.getElementById("step3El").className = "step";
+  }
+
+  // ── Habitat sliders ───────────────────────────────────────────────────────
+  function buildHabitatSliders() {
+    var container = document.getElementById("habitatSliders");
+    container.innerHTML = "";
+    var cfg  = HAB_CONFIG[enclosureType];
+    var keys = cfg.keys;
+
+    if (keys.length === 1) {
+      // Marine: just show water as fixed 100%
+      var note = document.createElement("div");
+      note.style.cssText = "font-size:13px;color:var(--muted);padding:8px 0";
+      note.textContent = "Lagoon water composition is always 100%. Adjust temperature and salinity in-game.";
+      container.appendChild(note);
+      document.getElementById("habTotal").style.display = "none";
+      return;
+    }
+    document.getElementById("habTotal").style.display = "block";
+
+    keys.forEach(function(key) {
+      var wrap   = document.createElement("div"); wrap.className = "slider-group";
+      var row    = document.createElement("div"); row.className = "slider-row";
+      var lbl    = document.createElement("span"); lbl.className = "slider-label"; lbl.textContent = HAB_LABELS[key];
+      var valEl  = document.createElement("span"); valEl.className = "slider-value";
+      valEl.id   = "hab-val-" + key; valEl.textContent = habValues[key] + "%";
+      row.appendChild(lbl); row.appendChild(valEl); wrap.appendChild(row);
+      var slider = document.createElement("input");
+      slider.type = "range"; slider.min = "0"; slider.max = "100"; slider.step = "1";
+      slider.value = habValues[key]; slider.id = "hab-slider-" + key;
+      slider.addEventListener("input", function() { onHabSlider(key, Number(slider.value)); });
+      wrap.appendChild(slider);
+      container.appendChild(wrap);
+    });
+    updateHabTotal();
+  }
+
+  function onHabSlider(changedKey, newVal) {
+    var keys   = HAB_CONFIG[enclosureType].keys;
+    var others = keys.filter(function(k) { return k !== changedKey; });
+    habValues[changedKey] = newVal;
+    var remaining = 100 - newVal;
+    var otherSum  = others.reduce(function(s, k) { return s + habValues[k]; }, 0);
+    if (otherSum > 0) {
+      others.forEach(function(k) { habValues[k] = Math.round((habValues[k] / otherSum) * remaining); });
+      var drift = 100 - keys.reduce(function(s, k) { return s + habValues[k]; }, 0);
+      if (drift !== 0) habValues[others[0]] += drift;
+    } else {
+      var share = Math.floor(remaining / others.length);
+      others.forEach(function(k) { habValues[k] = share; });
+      habValues[others[0]] += remaining - share * others.length;
+    }
+    others.forEach(function(k) { if (habValues[k] < 0) habValues[k] = 0; });
+    keys.forEach(function(k) {
+      var s = document.getElementById("hab-slider-" + k);
+      var v = document.getElementById("hab-val-" + k);
+      if (s) s.value = habValues[k];
+      if (v) v.textContent = habValues[k] + "%";
+    });
+    updateHabTotal();
+    recalculate();
+  }
+
+  function updateHabTotal() {
+    var keys  = HAB_CONFIG[enclosureType].keys;
+    var total = keys.reduce(function(s, k) { return s + (habValues[k] || 0); }, 0);
+    var el2   = document.getElementById("habTotal");
+    el2.textContent = "Total: " + total + "%";
+    el2.className   = "hab-total " + (total === 100 ? "ok" : "warn");
+  }
+
+  // ── Size slider ───────────────────────────────────────────────────────────
+  document.getElementById("sizeSlider").addEventListener("input", function() {
+    document.getElementById("sizeVal").textContent = Number(this.value).toLocaleString() + " m\u00b2";
+    recalculate();
+  });
+
+  // ── Species select + roster ───────────────────────────────────────────────
+
+  // Populate the <select> with valid species for this enclosure type,
+  // sorted alphabetically, excluding any already on the roster.
+  function populateSelect() {
+    var sel = document.getElementById("speciesSelect");
+    if (!sel) return;
+    var validTypes = TYPE_MAP[enclosureType];
+    var inRoster   = roster.map(function(r) { return r.species.ID; });
+    var available  = allSpecies.filter(function(s) {
+      return validTypes.indexOf(s.Type) !== -1 && inRoster.indexOf(s.ID) === -1;
+    });
+    available.sort(function(a, b) { return a.Name.localeCompare(b.Name); });
+    sel.innerHTML = '<option value="">— Select a species —</option>';
+    available.forEach(function(s) {
+      var opt = document.createElement("option");
+      opt.value = s.ID;
+      opt.textContent = s.Name + "  (" + s.Diet + ")";
+      sel.appendChild(opt);
+    });
+  }
+
+  function addSelectedSpecies() {
+    var sel = document.getElementById("speciesSelect");
+    if (!sel || !sel.value) return;
+    var s = allSpecies.find(function(sp) { return sp.ID === sel.value; });
+    if (!s) return;
+    addToRoster(s);
+  }
+
+  function addToRoster(s) {
+    if (roster.some(function(r) { return r.species.ID === s.ID; })) return;
+    var minSocial = Math.max(1, Number(s.Min_Social) || 1);
+    roster.push({ species: s, qty: minSocial });
+    if (roster.length >= 2) {
+      document.getElementById("step3El").className = "step active";
+      document.getElementById("step2El").className = "step complete";
+    }
+    populateSelect();
+    renderRoster();
+    buildFeederPanel();
+    recalculate();
+  }
+
+  function removeFromRoster(id) {
+    roster = roster.filter(function(r) { return r.species.ID !== id; });
+    populateSelect();
+    renderRoster();
+    buildFeederPanel();
+    recalculate();
+  }
+
+  function setQty(id, delta) {
+    var entry = roster.find(function(r) { return r.species.ID === id; });
+    if (!entry) return;
+    var newQty = entry.qty + delta;
+    if (newQty < 1) return;
+    entry.qty = newQty;
+    renderRoster();
+    buildFeederPanel();
+    recalculate();
+  }
+
+  function renderRoster() {
+    var list = document.getElementById("rosterList");
+    list.innerHTML = "";
+    if (roster.length === 0) {
+      var e = document.createElement("div"); e.className = "roster-empty";
+      e.textContent = "No species added yet"; list.appendChild(e); return;
+    }
+    roster.forEach(function(r) {
+      var s   = r.species;
+      var qty = r.qty;
+      var mn  = Number(s.Min_Social) || 1;
+      var mx  = Number(s.Max_Social) || 99;
+
+      var herdCls, herdLabel, itemBorderCls;
+      if (qty < mn) {
+        herdCls = "ri-herd-status herd-low";
+        herdLabel = qty + "/" + mn + " min";
+        itemBorderCls = "roster-item herd-warn";
+      } else if (qty > mx) {
+        herdCls = "ri-herd-status herd-over";
+        herdLabel = qty + "/" + mx + " max";
+        itemBorderCls = "roster-item herd-error";
+      } else {
+        herdCls = "ri-herd-status herd-ok";
+        herdLabel = qty + " \u2714";
+        itemBorderCls = "roster-item";
+      }
+
+      var item = document.createElement("div"); item.className = itemBorderCls;
+      var ico  = document.createElement("span"); ico.className = "ri-icon"; ico.textContent = dietIcon(s.Diet);
+
+      var info = document.createElement("div"); info.className = "ri-info";
+      var nm   = document.createElement("div"); nm.className = "ri-name"; nm.textContent = s.Name;
+      var mt   = document.createElement("div"); mt.className = "ri-meta";
+      mt.textContent = s.Diet + " \u00b7 " + (s.Space || 0).toLocaleString() + " m\u00b2 ea \u00b7 Herd: " + mn + "\u2013" + mx;
+      info.appendChild(nm); info.appendChild(mt);
+
+      var badge = document.createElement("span"); badge.className = herdCls; badge.textContent = herdLabel;
+
+      var qtyWrap = document.createElement("div"); qtyWrap.className = "ri-qty";
+      var btnM = document.createElement("button"); btnM.className = "qty-btn"; btnM.textContent = "\u2212";
+      var numEl= document.createElement("span");  numEl.className = "qty-num"; numEl.textContent = qty;
+      var btnP = document.createElement("button"); btnP.className = "qty-btn"; btnP.textContent = "+";
+      (function(sid) {
+        btnM.addEventListener("click", function() { setQty(sid, -1); });
+        btnP.addEventListener("click", function() { setQty(sid, +1); });
+      })(s.ID);
+      qtyWrap.appendChild(btnM); qtyWrap.appendChild(numEl); qtyWrap.appendChild(btnP);
+
+      var rem = document.createElement("button"); rem.className = "ri-remove"; rem.textContent = "\u00d7";
+      rem.title = "Remove species";
+      (function(sid) { rem.addEventListener("click", function() { removeFromRoster(sid); }); })(s.ID);
+
+      item.appendChild(ico); item.appendChild(info); item.appendChild(badge);
+      item.appendChild(qtyWrap); item.appendChild(rem);
+      list.appendChild(item);
+    });
+  }
+
+  // ── Feeder panel (auto-populated, read-only) ────────────────────────────
+  // Returns a map of { feederType: recommendedCount } for use in the RAG check
+  function calcFeederRequirements() {
+    var req = {};   // { "Meat Feeder": { count: 8, recommended: 2 }, ... }
+    roster.forEach(function(r) {
+      var s = r.species;
+      var types = [];
+      if (s.Feeder_Type && s.Feeder_Type.toString().trim())         types.push(s.Feeder_Type.toString().trim());
+      if (s.Secondary_Feeder && s.Secondary_Feeder.toString().trim()) types.push(s.Secondary_Feeder.toString().trim());
+      types.forEach(function(ft) {
+        if (!req[ft]) req[ft] = { animals: 0 };
+        req[ft].animals += r.qty;
+      });
+    });
+    // Recommend 1 feeder per 4 animals of that type, minimum 1
+    Object.keys(req).forEach(function(ft) {
+      req[ft].recommended = Math.max(1, Math.ceil(req[ft].animals / 4));
+    });
+    return req;
+  }
+
+  function buildFeederPanel() {
+    var panel = document.getElementById("feederPanel");
+    if (roster.length === 0) {
+      panel.innerHTML = '<div style="color:var(--muted);font-size:13px">Add species to see feeder requirements</div>';
+      return;
+    }
+    var req = calcFeederRequirements();
+    var keys = Object.keys(req);
+    if (keys.length === 0) {
+      panel.innerHTML = '<div style="color:var(--muted);font-size:13px">No feeder data available for selected species</div>';
+      return;
+    }
+    panel.innerHTML = "";
+    var row = document.createElement("div"); row.className = "feeder-row";
+    keys.forEach(function(ft) {
+      var tile = document.createElement("div"); tile.className = "feeder-tile";
+      var ico  = document.createElement("div"); ico.className = "feeder-tile-icon";
+      ico.textContent = feederEmoji(ft);
+      var info = document.createElement("div"); info.className = "feeder-tile-info";
+      var nm   = document.createElement("div"); nm.className = "feeder-tile-name"; nm.textContent = ft;
+      var cnt  = document.createElement("div"); cnt.className = "feeder-tile-count";
+      cnt.textContent = "Min. " + req[ft].recommended + " feeder" + (req[ft].recommended > 1 ? "s" : "") +
+        "  ·  " + req[ft].animals + " animal" + (req[ft].animals > 1 ? "s" : "");
+      info.appendChild(nm); info.appendChild(cnt);
+      tile.appendChild(ico); tile.appendChild(info);
+      row.appendChild(tile);
+    });
+    panel.appendChild(row);
+    var note = document.createElement("div");
+    note.style.cssText = "font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5";
+    note.textContent = "Feeder counts are calculated automatically. Place at least the minimum recommended in-game.";
+    panel.appendChild(note);
+  }
+
+  // ── Core RAG calculator ───────────────────────────────────────────────────
+  function recalculate() {
+    if (roster.length === 0) { resetResults(); return; }
+
+    var issues    = [];
+    var score     = 100;
+    var rosterIds = roster.map(function(r) { return r.species.ID; });
+    var encSize   = Number(document.getElementById("sizeSlider").value);
+
+    // 1. Space
+    var totalSpace = roster.reduce(function(t, r) { return t + (Number(r.species.Space) || 0) * r.qty; }, 0);
+    var spaceEl    = document.getElementById("spaceStatus");
+    if (totalSpace > 0) {
+      var ratio = encSize / totalSpace;
+      if (ratio < 0.8) {
+        score -= 30;
+        issues.push({ cls:"issue-red", icon:"\uD83D\uDEA8", title:"Enclosure Too Small",
+          detail:"Combined minimum space is " + totalSpace.toLocaleString() + " m\u00b2. Current size is critically insufficient. Expand or remove species." });
+        spaceEl.textContent = "\u26A0\uFE0F Needs " + totalSpace.toLocaleString() + " m\u00b2 minimum";
+        spaceEl.style.color = "var(--rag-red)";
+      } else if (ratio < 1.0) {
+        score -= 15;
+        issues.push({ cls:"issue-amber", icon:"\uD83D\uDCCF", title:"Enclosure Slightly Undersized",
+          detail:"You are " + Math.round((1 - ratio) * 100) + "% below the combined minimum of " + totalSpace.toLocaleString() + " m\u00b2. Consider expanding." });
+        spaceEl.textContent = "\u26A0\uFE0F Just below minimum (" + totalSpace.toLocaleString() + " m\u00b2)";
+        spaceEl.style.color = "var(--rag-amber)";
+      } else {
+        spaceEl.textContent = "\u2705 Sufficient (" + totalSpace.toLocaleString() + " m\u00b2 combined minimum)";
+        spaceEl.style.color = "var(--green)";
+      }
+    }
+
+    // 2. Herd sizes — qty is set directly on each roster entry
+    roster.forEach(function(r) {
+      var s = r.species, n = r.qty;
+      var mn = Number(s.Min_Social) || 1, mx = Number(s.Max_Social) || 99;
+      if (n < mn) {
+        score -= 10;
+        issues.push({ cls:"issue-amber", icon:"\uD83D\uDC65", title:"Herd Too Small: " + s.Name,
+          detail:"Requires at least " + mn + " individuals for social comfort. You have " + n + ". Use the + button on the roster to add more." });
+      }
+      if (n > mx) {
+        score -= 15;
+        issues.push({ cls:"issue-red", icon:"\uD83D\uDC65", title:"Herd Overcrowded: " + s.Name,
+          detail:"Maximum comfortable herd size is " + mx + ". You have " + n + ". Overcrowding causes comfort loss and territorial conflicts." });
+      }
+    });
+
+    // 3. Cohabitation pairs
+    var hostiles = [], cautions = [], ideals = [], seen = {};
+    for (var i = 0; i < roster.length; i++) {
+      for (var j = i + 1; j < roster.length; j++) {
+        var a = roster[i].species, b = roster[j].species;
+        var pk = [a.ID, b.ID].sort().join("|");
+        if (seen[pk]) continue; seen[pk] = true;
+        var rel = "unknown";
+        if (cohMatrix[a.ID] && cohMatrix[a.ID][b.ID])      rel = cohMatrix[a.ID][b.ID].relationship;
+        else if (cohMatrix[b.ID] && cohMatrix[b.ID][a.ID]) rel = cohMatrix[b.ID][a.ID].relationship;
+        if      (rel === "hostile")    { score -= 35; hostiles.push(a.Name + " + " + b.Name); }
+        else if (rel === "caution")    { score -= 12; cautions.push(a.Name + " + " + b.Name); }
+        else if (rel === "ideal")      { score = Math.min(100, score + 3); ideals.push(a.Name + " + " + b.Name); }
+      }
+    }
+    if (hostiles.length) issues.push({ cls:"issue-red", icon:"\uD83D\uDD34", title:"Hostile Pairings (" + hostiles.length + ")", detail:hostiles.join(" \u00b7 ") + ". These species will fight and break fences." });
+    if (cautions.length) issues.push({ cls:"issue-amber", icon:"\uD83D\uDFE1", title:"Caution Pairings (" + cautions.length + ")", detail:cautions.join(" \u00b7 ") + ". Monitor comfort closely." });
+    if (ideals.length)   issues.push({ cls:"issue-green", icon:"\uD83D\uDFE2", title:"Ideal Pairings (" + ideals.length + ")", detail:ideals.join(" \u00b7 ") + ". These combinations actively boost comfort." });
+
+    // 4. Habitat shortfalls (land/aviary only)
+    if (enclosureType !== "marine") {
+      var habIssues = [];
+      roster.forEach(function(r) {
+        var s = r.species;
+        HAB_CONFIG[enclosureType].keys.forEach(function(hab) {
+          var need = Number(s[hab]) || 0, have = habValues[hab] || 0;
+          if (need > 0 && have < need - 5) habIssues.push(s.Name + " needs " + need + "% " + HAB_LABELS[hab] + " (have " + have + "%)");
+        });
+      });
+      if (habIssues.length) { score -= Math.min(30, habIssues.length * 8); issues.push({ cls:"issue-amber", icon:"\uD83C\uDF0D", title:"Habitat Shortfalls (" + habIssues.length + ")", detail:habIssues.join(" \u00b7 ") + ". Adjust the habitat sliders." }); }
+    }
+
+    // 5. Feeder data completeness (counts are auto-calculated now)
+    roster.forEach(function(r) {
+      var s = r.species;
+      if (!s.Feeder_Type || !s.Feeder_Type.toString().trim()) {
+        issues.push({ cls:"issue-amber", icon:"\uD83C\uDF7D\uFE0F",
+          title:"Missing Feeder Data: " + s.Name,
+          detail:"No feeder type recorded for this species. Check the Feeder_Type column in the spreadsheet." });
+      }
+    });
+
+    // 6. Clamp & RAG
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    var ragClass = score >= 70 ? "rag-green" : score >= 35 ? "rag-amber" : "rag-red";
+
+    // 7. Gene mods
+    var geneRecs = [], seenGenes = {};
+    roster.forEach(function(r) {
+      var s = r.species;
+      GENE_MODS.forEach(function(mod) {
+        var k = mod.id + "|" + s.ID;
+        if (seenGenes[k]) return;
+        if (mod.triggerFn(s, rosterIds, cohMatrix)) { seenGenes[k] = true; geneRecs.push({ mod:mod, species:s.Name }); }
+      });
+    });
+
+    renderDietaryChart();
+    renderRAG(score, ragClass);
+    renderIssues(issues);
+    renderGeneMods(geneRecs);
+  }
+
+  function renderRAG(score, ragClass) {
+    var d = document.getElementById("ragDisplay");
+    d.className = "rag-display " + ragClass;
+    var icons  = { "rag-green":"\uD83D\uDFE2", "rag-amber":"\uD83D\uDFE1", "rag-red":"\uD83D\uDD34" };
+    var labels = { "rag-green":"Safe Enclosure", "rag-amber":"Caution Required", "rag-red":"Critical Issues" };
+    var descs  = {
+      "rag-green":"Your enclosure parameters are within acceptable ranges. Monitor comfort levels in-game.",
+      "rag-amber":"Potential issues detected. Review the recommendations below before building.",
+      "rag-red":"Critical problems detected. This enclosure will likely result in conflict or breakouts."
+    };
+    d.innerHTML = "";
+    var ico = document.createElement("div"); ico.className = "rag-icon"; ico.textContent = icons[ragClass];
+    var st  = document.createElement("div"); st.className = "rag-status"; st.textContent = labels[ragClass];
+    var ds  = document.createElement("div"); ds.className = "rag-desc";   ds.textContent = descs[ragClass];
+    d.appendChild(ico); d.appendChild(st); d.appendChild(ds);
+
+    var wrap = document.getElementById("scoreBarWrap"); wrap.style.display = "block";
+    var fill = document.getElementById("scoreBarFill");
+    fill.style.width = score + "%";
+    fill.style.background = ragClass === "rag-green" ? "var(--rag-green)" : ragClass === "rag-amber" ? "var(--rag-amber)" : "var(--rag-red)";
+    document.getElementById("scoreNum").textContent = "Score: " + score + " / 100";
+  }
+
+  function renderIssues(issues) {
+    var list = document.getElementById("issuesList");
+    list.innerHTML = "";
+    if (issues.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">&#x2705;</div><div class="empty-text">No issues \u2014 looking good!</div></div>';
+      return;
+    }
+    var wrap = document.createElement("div"); wrap.className = "issues-list";
+    issues.forEach(function(issue) {
+      var item = document.createElement("div"); item.className = "issue-item " + issue.cls;
+      var ico  = document.createElement("div"); ico.className = "issue-icon"; ico.textContent = issue.icon;
+      var body = document.createElement("div");
+      var t = document.createElement("div"); t.className = "issue-title";  t.textContent = issue.title;
+      var d = document.createElement("div"); d.className = "issue-detail"; d.textContent = issue.detail;
+      body.appendChild(t); body.appendChild(d);
+      item.appendChild(ico); item.appendChild(body); wrap.appendChild(item);
+    });
+    list.appendChild(wrap);
+  }
+
+  function renderGeneMods(recs) {
+    var list = document.getElementById("geneList");
+    list.innerHTML = "";
+    if (recs.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">&#x1F52C;</div><div class="empty-text">No gene modifications needed for this roster</div></div>';
+      return;
+    }
+    recs.forEach(function(rec) {
+      var item = document.createElement("div"); item.className = "gene-item";
+      var hdr  = document.createElement("div"); hdr.className = "gene-header";
+      var ico  = document.createElement("span"); ico.className = "gene-icon";    ico.textContent = rec.mod.icon;
+      var ttl  = document.createElement("span"); ttl.className = "gene-title";   ttl.textContent = rec.mod.name;
+      var spc  = document.createElement("span"); spc.className = "gene-species"; spc.textContent = "Apply to: " + rec.species;
+      hdr.appendChild(ico); hdr.appendChild(ttl); hdr.appendChild(spc);
+      var dsc  = document.createElement("div");  dsc.className = "gene-desc";    dsc.textContent = rec.mod.desc;
+      var eff  = document.createElement("span"); eff.className = "gene-effect";  eff.textContent = rec.mod.effect;
+      item.appendChild(hdr); item.appendChild(dsc); item.appendChild(eff);
+      list.appendChild(item);
+    });
+  }
+
+  // ── Dietary food tile renderer ──────────────────────────────────────────
+
+  var FEED_WEIGHT = { "Low": 1, "Medium": 2, "High": 3, "Very High": 4 };
+
+  // Map demand score to a labelled tier
+  function demandTier(score) {
+    if (score <= 0)  return null;
+    if (score < 4)   return { label: "Low",       cls: "amount-low" };
+    if (score < 10)  return { label: "Medium",    cls: "amount-medium" };
+    if (score < 20)  return { label: "High",      cls: "amount-high" };
+    return               { label: "Very High",  cls: "amount-very-high" };
+  }
+
+  // Icon map for food subtypes
+  var FOOD_ICONS = {
+    "Large Carcass":    "\uD83E\uDD69",   // 🥩
+    "Medium Carcass":   "\uD83C\uDF56",   // 🍖
+    "Small Carcass":    "\uD83C\uDF57",   // 🍗
+    "Fish":             "\uD83D\uDC1F",   // 🐟
+    "Live Fish":        "\uD83D\uDC20",   // 🐠
+    "Small Prey":       "\uD83D\uDC07",   // 🐇
+    "Conifers":         "\uD83C\uDF32",   // 🌲
+    "Palms":            "\uD83C\uDF34",   // 🌴
+    "Low Shrubs":       "\uD83C\uDF3F",   // 🌿
+    "Ferns":            "\uD83C\uDF31",   // 🌱
+    "Shrubs":           "\uD83C\uDF3F",   // 🌿
+    "Flowering Plants": "\uD83C\uDF38",   // 🌸
+    "Seeds":            "\uD83C\uDF3E",   // 🌾
+    "Mixed Vegetation": "\uD83E\uDD66",   // 🥦
+    "Mixed":            "\uD83E\uDD66",   // 🥦
+    "Insects":          "\uD83D\uDC1B",   // 🐛
+    "Eggs":             "\uD83E\uDD5A",   // 🥚
+    "Seeds / Ferns":    "\uD83C\uDF3E",   // 🌾
+    "default":          "\uD83C\uDF7D\uFE0F"  // 🍽️
+  };
+
+  function getFoodIcon(token) {
+    return FOOD_ICONS[token] || FOOD_ICONS["default"];
+  }
+
+  function parseSubtypes(raw) {
+    if (!raw || !raw.toString().trim()) return [];
+    return raw.toString().split("/").map(function(t) { return t.trim(); }).filter(Boolean);
+  }
+
+  function buildFoodDemand() {
+    var demand = {};
+    roster.forEach(function(r) {
+      var s      = r.species;
+      var weight = (FEED_WEIGHT[s.Feed_Amount] || 1) * r.qty;
+      var tokens = parseSubtypes(s.Food_Subtype);
+      var share  = tokens.length > 0 ? weight / tokens.length : 0;
+      tokens.forEach(function(token) {
+        demand[token] = (demand[token] || 0) + share;
+      });
+    });
+    return demand;
+  }
+
+  function renderDietaryChart() {
+    var container = document.getElementById("radarContainer");
+    if (!container) return;
+
+    var demand = buildFoodDemand();
+    var keys   = Object.keys(demand);
+
+    if (keys.length === 0) {
+      container.innerHTML =
+        '<div class="dietary-empty">\uD83C\uDF72 Add species to see dietary breakdown</div>';
+      return;
+    }
+
+    // Sort by demand descending
+    keys.sort(function(a, b) { return demand[b] - demand[a]; });
+
+    container.innerHTML = "";
+    var grid = document.createElement("div"); grid.className = "food-grid";
+
+    keys.forEach(function(k) {
+      var tier = demandTier(demand[k]);
+      if (!tier) return;
+
+      var tile = document.createElement("div"); tile.className = "food-tile";
+
+      var ico  = document.createElement("div"); ico.className = "food-tile-icon";
+      ico.textContent = getFoodIcon(k);
+
+      var body = document.createElement("div"); body.className = "food-tile-body";
+      var nm   = document.createElement("div"); nm.className = "food-tile-name"; nm.textContent = k;
+      var amt  = document.createElement("div"); amt.className = "food-tile-amount " + tier.cls;
+      amt.textContent = tier.label;
+
+      body.appendChild(nm); body.appendChild(amt);
+      tile.appendChild(ico); tile.appendChild(body);
+      grid.appendChild(tile);
+    });
+
+    container.appendChild(grid);
+  }
+
+  function resetResults() {
+    document.getElementById("ragDisplay").className = "rag-display rag-empty";
+    document.getElementById("ragDisplay").innerHTML =
+      '<div class="rag-icon">&#x1F3DF;&#xFE0F;</div>' +
+      '<div class="rag-status" style="color:var(--muted)">Awaiting Species</div>' +
+      '<div class="rag-desc">Add at least one species to begin</div>';
+    document.getElementById("scoreBarWrap").style.display = "none";
+    document.getElementById("issuesList").innerHTML =
+      '<div class="empty-state"><div class="empty-icon">&#x2705;</div><div class="empty-text">Add species to see analysis</div></div>';
+    document.getElementById("geneList").innerHTML =
+      '<div class="empty-state"><div class="empty-icon">&#x1F52C;</div><div class="empty-text">No modifications needed yet</div></div>';
+    document.getElementById("spaceStatus").textContent = "";
+    var rc = document.getElementById("radarContainer");
+    if (rc) rc.innerHTML =
+      '<div class="radar-empty"><div class="radar-empty-icon">&#x1F372;</div>' +
+      '<div class="empty-text">Add species to see dietary breakdown</div></div>';
+  }
+
+  function dietIcon(diet) {
+    return diet === "Carnivore" ? "\uD83E\uDDB4" : diet === "Herbivore" ? "\uD83C\uDF3F" : diet === "Piscivore" ? "\uD83D\uDC1F" : "\uD83E\uDD95";
+  }
+  function feederEmoji(f) {
+    return f === "Meat Feeder" ? "\uD83E\uDDB4" : f === "Ground Feeder" ? "\uD83C\uDF3F" : f === "Tall Feeder" ? "\uD83C\uDF32" : f === "Marine Feeder" ? "\uD83D\uDC1F" : f === "Gyrosphere Bait" ? "\uD83C\uDFAF" : "\uD83C\uDF7D\uFE0F";
+  }
+
+  function goBack() { JWEApp.navigate("index"); }
+
+</script>
+
+  <!-- Service Worker registration -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function() {
+        navigator.serviceWorker.register("sw.js");
+      });
+    }
+  </script>
+</body>
+</html>

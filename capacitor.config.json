@@ -1,0 +1,12 @@
+{
+  "appId": "com.jwecodex.app",
+  "appName": "JWE Codex",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "backgroundColor": "#07111f",
+    "preferredContentMode": "mobile"
+  }
+}
